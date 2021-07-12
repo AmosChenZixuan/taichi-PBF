@@ -89,13 +89,13 @@ class Simulation:
         self.smoke_color    = 0x959595
         # control
         self.paused = False
-        self.display_fluid = False
+        self.display_fluid = True
         self.attract = 0
         self.mouse_pos = 0,0
         self.tick = 0
         # sim
         self.substeps           = 2
-        self.solver_iters       = 10
+        self.solver_iters       = 5
         self.dt = 1 / 60 / self.substeps
         self.gravity = vec2(y=-980.)
         # grid 
@@ -110,7 +110,7 @@ class Simulation:
         self.poly6_const        = 315 / 64 / np.pi / self.kernel_size**9
         self.spikyG_const       = -45 / np.pi / self.kernel_size**6
         self.restDensity        = (self.poly6_const * self.kernel_sqr**3) * 0.5 # rho_0 = restDensity / inv_mass
-        self.relaxation         = 500       # applied to lambda 
+        self.relaxation         = 5       # applied to lambda 
         # gas
         self.alpha              = -0.2      # gravity refactor for gas
         # Tensile Instability  (repulsive term S_corr)
@@ -143,8 +143,8 @@ class Simulation:
 
     def reset(self):
         self.mem.clear()
-        for i in range(10):
-            for j in range(10):
+        for i in range(30):
+            for j in range(30):
                 x = 220 + j * self.kernel_size *0.8
                 y = 15 + i * self.kernel_size * 0.1
                 v = 0.,0.
@@ -193,7 +193,7 @@ class Simulation:
             g = self.gravity
             if mem.phase[i] == Phase.gas.value:
                 g *= self.alpha
-            mem.velocity[i] += self.dt * (g + mem.force[i])
+            mem.velocity[i] += self.dt * (g)# + mem.force[i])
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
             if self.attract:
                 x, y = self.mouse_pos
@@ -337,18 +337,18 @@ class Simulation:
             
     
     def step(self):
-        # for _ in range(self.substeps):
-        #     # time integration - semi-implicit
-        #     self.apply_force()
-        #     # update grid info
-        #     self.find_neighbours()
-        #     # non-linear Jacobi Iteration
-        #     for _ in range(self.solver_iters): 
-        #         self.project(Phase.fluid.value)
-        #         self.project(Phase.gas.value)
-        #     # update v and pos
-        #     self.update()
-        #     self.box_confinement()
+        for _ in range(self.substeps):
+            # time integration - semi-implicit
+            self.apply_force()
+            # update grid info
+            self.find_neighbours()
+            # non-linear Jacobi Iteration
+            for _ in range(self.solver_iters): 
+                self.project(Phase.fluid.value)
+                self.project(Phase.gas.value)
+            # update v and pos
+            self.update()
+            self.box_confinement()
         # to host for rendering
         self.copy2Host()
 
@@ -370,13 +370,11 @@ class Simulation:
                 continue
             ph = mem.phase[i]
             if self.display_fluid and ph == Phase.fluid.value:
-                gui.circle(pos=x[i], color=sim.water_color, radius=50)
+                gui.circle(pos=x[i], color=sim.water_color, radius=5)
             elif ph == Phase.gas.value:
-                gui.circle(pos=x[i], color=sim.gas_color, radius=50)
+                gui.circle(pos=x[i], color=sim.gas_color, radius=5)
             elif ph == Phase.smoke.value:
-                gui.circle(pos=x[i], color=sim.smoke_color, radius=50) 
-            print(i, ',', x[i])
-        gui.circle(pos=[0.4, 0.0625], color=sim.smoke_color, radius=50) 
+                gui.circle(pos=x[i], color=sim.smoke_color, radius=5) 
         # Display
         gui.show()
 
