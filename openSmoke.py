@@ -52,8 +52,8 @@ class Mem:
         
     def clear(self):
         ''' Resetting counters. Old data will be overwritten as the new simulation proceed '''
-        self.total_size = 0         # cur number of particles
-        self._size       = np.zeros(len(Phase), dtype=int) # number of particles of each phase
+        self.total_size  = 0         # cur number of particles
+        self._size       = self.new_field(len(Phase), 1, Mem.COUNTER_TYPE) # number of particles of each phase
 
     def add(self, pos, v, f, m, lf, ph):
         i,j = self.total_size, self._size[ph.value]
@@ -68,11 +68,12 @@ class Mem:
         self.total_size += 1
         self._size[ph.value] += 1
 
-    def size(self, ph=None):
-        if ph is None:
-            return self.total_size
-        else:
-            return self._size[ph]
+    @ti.func
+    def size(self, ph=False):
+        ret = self.total_size
+        # if ph != False:
+        #     ret = self._size[ph]
+        return ret
 
 
 
@@ -250,16 +251,16 @@ class Simulation:
             mem.n_neighbors[x1] = n_neighbor
 
     @ti.kernel
-    def project(self, ph:ti.i8):
+    def project(self, ph:ti.i32):
         mem = self.mem
         # calc lambdas
-        for xi in range(mem.size(ph)):
+        for xi in range(self.mem._size[ph]):
             x1 = mem.index[ph, xi]
             if not mem.lifetime[x1]: continue
             sum_SpikyG      = vec2()
             sum_SpikyG_sq   = 0.
             rho_i           = self.wPoly6(0)
-            for i in range(mem.n_neighbors(x1)):
+            for i in range(mem.n_neighbors[x1]):
                 x2 = mem.neighbors[x1, i]
                 if mem.phase[x2] == Phase.smoke.value: continue 
                 r                = mem.newPos[x1] - mem.newPos[x2]
@@ -267,15 +268,15 @@ class Simulation:
                 sum_SpikyG      += grad
                 sum_SpikyG_sq  += grad.norm_sqr()
                 rho_i           += self.wPoly6(r.norm_sqr())
-        C_i = rho_i / self.restDensity / mem.mass[x1] - 1
-        mem.lambdas[x1] = -C_i / (sum_SpikyG_sq + sum_SpikyG.norm_sqr() + self.relaxation)
+            C_i = rho_i / self.restDensity / mem.mass[x1] - 1
+            mem.lambdas[x1] = -C_i / (sum_SpikyG_sq + sum_SpikyG.norm_sqr() + self.relaxation)
         # calc delta
-        for xi in range(mem.size(ph)):
+        for xi in range(self.mem._size[ph]):
             x1 = mem.index[ph, xi]
             if not mem.lifetime[x1]: continue
             mem.deltaX[x1]  = vec2()
             fvort           = vec2()
-            for i in range(mem.n_neighbors(x1)):
+            for i in range(mem.n_neighbors[x1]):
                 x2 = mem.neighbors[x1, i]
                 if mem.phase[x2] == Phase.smoke.value: continue 
                 r = mem.newPos[x1] - mem.newPos[x2]
@@ -286,10 +287,10 @@ class Simulation:
                     grad   = self.wSpikyG(r) / self.restDensity / mem.mass[x1]
                     w      = grad * mem.velocity[x2]
                     cross  = vec3(z=w.norm_sqr()).cross(vec3(x=r[0], y=r[1]))
-                    fvort += vec2(cross[0], cross[1]) * self.wSpikyG(r.norm_sqr())
+                    fvort += vec2(cross[0], cross[1]) * self.wSpikyG(r*r)
             mem.force[x1] = fvort
         # apply delta
-        for xi in range(mem.size(ph)):
+        for xi in range(self.mem._size[ph]):
             x1 = mem.index[ph, xi]
             mem.newPos[x1] += mem.deltaX[x1] / self.restDensity / mem.mass[x1]
 
@@ -319,12 +320,12 @@ class Simulation:
             mem.curPos[i]   = mem.newPos[i]
         # Advect smoke
         ph = Phase.smoke.value
-        for xi in range(mem.size(ph)):
+        for xi in range(self.mem._size[ph]):
             x1 = mem.index[ph, xi]
             if not mem.lifetime[x1]: continue
             Vsum = vec2()
             Wsum = 0.
-            for i in range(mem.n_neighbors(x1)):
+            for i in range(mem.n_neighbors[x1]):
                 x2 = mem.neighbors[x1, i]
                 if mem.phase[x2] == Phase.smoke.value: continue
                 r = mem.curPos[x1] - mem.curPos[x2]
@@ -336,18 +337,18 @@ class Simulation:
             
     
     def step(self):
-        for _ in range(self.substeps):
-            # time integration - semi-implicit
-            self.apply_force()
-            # update grid info
-            self.find_neighbours()
-            # non-linear Jacobi Iteration
-            for _ in range(self.solver_iters): 
-                self.project(Phase.fluid.value)
-                self.project(Phase.gas.value)
-            # update v and pos
-            self.update()
-            self.box_confinement()
+        # for _ in range(self.substeps):
+        #     # time integration - semi-implicit
+        #     self.apply_force()
+        #     # update grid info
+        #     self.find_neighbours()
+        #     # non-linear Jacobi Iteration
+        #     for _ in range(self.solver_iters): 
+        #         self.project(Phase.fluid.value)
+        #         self.project(Phase.gas.value)
+        #     # update v and pos
+        #     self.update()
+        #     self.box_confinement()
         # to host for rendering
         self.copy2Host()
 
@@ -363,17 +364,19 @@ class Simulation:
         mem = self.mem
         # Particles
         x = mem.p2Render.to_numpy()
-        for i in range(mem.size()):
+        for i in range(mem.total_size):
             # skip dead particles
             if not mem.lifetime[i]:
                 continue
             ph = mem.phase[i]
             if self.display_fluid and ph == Phase.fluid.value:
-                gui.circle(pos=x[i], color=sim.water_color, radius=4)
+                gui.circle(pos=x[i], color=sim.water_color, radius=50)
             elif ph == Phase.gas.value:
-                gui.circle(pos=x[i], color=sim.gas_color, radius=3)
+                gui.circle(pos=x[i], color=sim.gas_color, radius=50)
             elif ph == Phase.smoke.value:
-                gui.circle(pos=x[i], color=sim.smoke_color, radius=3) 
+                gui.circle(pos=x[i], color=sim.smoke_color, radius=50) 
+            print(i, ',', x[i])
+        gui.circle(pos=[0.4, 0.0625], color=sim.smoke_color, radius=50) 
         # Display
         gui.show()
 
@@ -411,7 +414,7 @@ if __name__ == '__main__':
                 sim.display_fluid = not sim.display_fluid
             elif e.key == gui.SPACE:
                 sim.emit_smoke()
-        if True:
+        if False:
             if not (sim.tick % 5):
                 sim.emit_smoke()
 
