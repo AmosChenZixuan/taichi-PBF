@@ -15,6 +15,7 @@ class Phase(Enum):
     gas = 1
     smoke = 2
 
+@ti.data_oriented
 class Mem:
     PHASE_TYPE = ti.i8
     INDEX_TYPE = ti.i32
@@ -70,10 +71,9 @@ class Mem:
     def size(self, ph=None):
         if ph is None:
             return self.total_size
-        elif isinstance(ph, ti.i8):
-            return self._size[ph]
         else:
-            return self._size[ph.value]
+            return self._size[ph]
+
 
 
 @ti.data_oriented
@@ -208,7 +208,6 @@ class Simulation:
     @ti.kernel
     def find_neighbours(self):
         mem = self.mem
-        p = mem.newPos
         # (1) clear grid; erase all counters
         for i, j in mem.n_in_grid:
             mem.n_in_grid[i,j] = 0
@@ -216,7 +215,7 @@ class Simulation:
         for i in range(mem.size()):
             if not mem.lifetime[i]:
                 continue
-            gridi, gridj = int(p[i] / self.grid_size)
+            gridi, gridj = int(mem.newPos[i] / self.grid_size)
             n = mem.n_in_grid[gridi, gridj]
             if n < self.grid_max_capacity:
                 mem.grid[gridi, gridj, n] = i
@@ -233,7 +232,7 @@ class Simulation:
             if not mem.lifetime[x1]:
                 continue
             n_neighbor = 0
-            gridi, gridj = int(p[x1] / self.grid_size)
+            gridi, gridj = int(mem.newPos[x1] / self.grid_size)
             for dy in ti.static(range(-1,2)):
                 y = gridj + dy
                 if 0 <= y < self.grid_shape[1]:
@@ -244,7 +243,7 @@ class Simulation:
                                 x2 = mem.grid[x,y,i]
                                 if (n_neighbor >= self.max_neighbors): break  
                                 if (x1 == x2): continue 
-                                r = p[x2] - p[x1]
+                                r = mem.newPos[x2] - mem.newPos[x1]
                                 if (r.norm_sqr() < self.kernel_sqr):
                                     mem.neighbors[x1, n_neighbor] = x2
                                     n_neighbor += 1
@@ -253,7 +252,6 @@ class Simulation:
     @ti.kernel
     def project(self, ph:ti.i8):
         mem = self.mem
-        p = mem.newPos
         # calc lambdas
         for xi in range(mem.size(ph)):
             x1 = mem.index[ph, xi]
@@ -264,7 +262,7 @@ class Simulation:
             for i in range(mem.n_neighbors(x1)):
                 x2 = mem.neighbors[x1, i]
                 if mem.phase[x2] == Phase.smoke.value: continue 
-                r                = p[x1] - p[x2]
+                r                = mem.newPos[x1] - mem.newPos[x2]
                 grad             = self.wSpikyG(r) / self.restDensity / mem.mass[x1]
                 sum_SpikyG      += grad
                 sum_SpikyG_sq  += grad.norm_sqr()
@@ -280,7 +278,7 @@ class Simulation:
             for i in range(mem.n_neighbors(x1)):
                 x2 = mem.neighbors[x1, i]
                 if mem.phase[x2] == Phase.smoke.value: continue 
-                r = p[x1] - p[x2]
+                r = mem.newPos[x1] - mem.newPos[x2]
                 s_corr = -self.s_corr_k * (self.wPoly6(r.norm_sqr()) * self.s_corr_const) ** self.s_corr_n
                 mem.deltaX[x1] += (mem.lambdas[x1] + mem.lambdas[x2] + s_corr) * self.wSpikyG(r)
                 # gas curl
@@ -293,36 +291,32 @@ class Simulation:
         # apply delta
         for xi in range(mem.size(ph)):
             x1 = mem.index[ph, xi]
-            p[x1] += mem.deltaX[x1] / self.restDensity / mem.mass[x1]
+            mem.newPos[x1] += mem.deltaX[x1] / self.restDensity / mem.mass[x1]
 
     @ti.kernel
     def box_confinement(self):
         mem = self.mem
-        p = mem.curPos
         l,r,b,t = self.box
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
-            if p[i][0] < l:
-                p[i][0] = l 
-            if p[i][0] > r:
-                p[i][0] = r  
-            if p[i][1] < b:
-                p[i][1] = b 
-            if p[i][1] > t:
-                p[i][1] = t
+            if mem.curPos[i][0] < l:
+                mem.curPos[i][0] = l 
+            if mem.curPos[i][0] > r:
+                mem.curPos[i][0] = r  
+            if mem.curPos[i][1] < b:
+                mem.curPos[i][1] = b 
+            if mem.curPos[i][1] > t:
+                mem.curPos[i][1] = t
 
     @ti.kernel
     def update(self):
         mem = self.mem
-        x   = mem.curPos
-        p   = mem.newPos
-        v   = mem.velocity
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
             if mem.phase[i] == Phase.smoke.value: continue
             mem.lifetime[i] -= 1
-            v[i]            = (p[i] - x[i]) / self.dt * 0.99
-            x[i]            = p[i]
+            mem.velocity[i] = (mem.newPos[i] - mem.curPos[i]) / self.dt * 0.99
+            mem.curPos[i]   = mem.newPos[i]
         # Advect smoke
         ph = Phase.smoke.value
         for xi in range(mem.size(ph)):
@@ -333,12 +327,12 @@ class Simulation:
             for i in range(mem.n_neighbors(x1)):
                 x2 = mem.neighbors[x1, i]
                 if mem.phase[x2] == Phase.smoke.value: continue
-                r = x[x1] - x[x2]
+                r = mem.curPos[x1] - mem.curPos[x2]
                 w = self.wPoly6(r.norm_sqr())
-                Vsum += w * v[x2]
+                Vsum += w * mem.velocity[x2]
                 Wsum += w
             if Wsum > 0.:
-                v[x1] = Vsum / Wsum
+                mem.velocity[x1] = Vsum / Wsum
             
     
     def step(self):
