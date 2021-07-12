@@ -193,7 +193,7 @@ class Simulation:
             g = self.gravity
             if mem.phase[i] == Phase.gas.value:
                 g *= self.alpha
-            mem.velocity[i] += self.dt * (g)# + mem.force[i])
+            mem.velocity[i] += self.dt * (g + mem.force[i])
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
             if self.attract:
                 x, y = self.mouse_pos
