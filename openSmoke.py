@@ -88,9 +88,7 @@ class Simulation:
         self.window         = 600,600
         self.box            = 0,600,0,590
         self.bg_color       = 0xf0f0f0
-        self.water_color    = 0x328ac1
-        self.gas_color      = 0xff1c8a
-        self.smoke_color    = 0x959595
+        self.palette        = np.array([0x328ac1, 0xff1c8a, 0x959595])
         # control
         self.paused = False
         self.display_fluid = True
@@ -154,7 +152,7 @@ class Simulation:
                 v = 0.,0.
                 f = 0.,0.
                 mass = 1.
-                life = -1  
+                life = -1
                 phase = Phase.fluid
                 self.mem.add([x,y], v, f, mass, life, phase)
 
@@ -364,24 +362,20 @@ class Simulation:
             x = self.mem.curPos[i]
             self.mem.p2Render[i] = x[0]/w, x[1]/h
 
-    def render(self, gui):
-        timer = clock()
-        # Particles
-        x = self.mem.p2Render.to_numpy()
-        timer = timeit(timer, 'toHost')
-        for i in range(self.mem.total_size):
-            # skip dead particles
-            if not self.mem.lifetime[i]:
-                continue
-            ph = self.mem.phase[i]
-            if self.display_fluid and ph == Phase.fluid.value:
-                gui.circle(pos=x[i], color=sim.water_color, radius=5)
-            elif ph == Phase.gas.value:
-                gui.circle(pos=x[i], color=sim.gas_color, radius=5)
-            elif ph == Phase.smoke.value:
-                gui.circle(pos=x[i], color=sim.smoke_color, radius=5) 
-        timer = timeit(timer, 'draw')
+    def render(self, gui:ti.template()):
+        mem = self.mem
+        size = mem.total_size
+        active = mem.lifetime.to_numpy()[:size] != 0
+        ph = mem.phase.to_numpy()[:size]
+        if not self.display_fluid:
+            active *= ph != Phase.fluid.value
+        pos = mem.p2Render.to_numpy()[:size][active]
         
+        gui.circles(pos=pos,
+                radius=5,
+                color=self.palette[ph[active]]
+        )
+
 
 ## utils
 def vec2(x=0., y=0.):
@@ -433,12 +427,11 @@ if __name__ == '__main__':
             sim.attract = -1
         else:
             sim.attract = 0
-
+        print(f'===={sim.tick}====')
         timer = clock()
         if not sim.paused:
             sim.step()
         timer = timeit(timer, 'step')
-        print('???')
         sim.render(gui)
         timer = timeit(timer, 'render')
         # Display
