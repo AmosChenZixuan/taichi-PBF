@@ -1,7 +1,7 @@
-from numpy.lib.shape_base import vsplit
 import taichi as ti
 import numpy as np
 from enum import Enum, unique
+from time import perf_counter as clock
 ti.init(arch=ti.gpu)
 
 '''
@@ -22,7 +22,8 @@ class Mem:
     COUNTER_TYPE = ti.i32
     def __init__(self, capacity, grid_shape, grid_max, neighbor_max):
         self.capacity   = capacity  # max number of particles
-        self.clear()                # init/reset memory counters
+        self.total_size  = 0         # cur number of particles
+        self._size       = self.new_field(len(Phase), 1, Mem.COUNTER_TYPE) # number of particles of each phase
         # PBDynamics
         self.curPos     = self.new_field(capacity) # X, true position
         self.newPos     = self.new_field(capacity) # P, estimated position
@@ -41,6 +42,9 @@ class Mem:
         self.n_neighbors= self.new_field(capacity, Mem.COUNTER_TYPE)          # number of neighbors for each particle
         # Render
         self.p2Render   = self.new_field(capacity)
+        # Done
+        self.clear()                # init/reset memory counters
+
 
     @staticmethod
     def new_field(shape, dim=2, dtype=ti.f32):
@@ -53,7 +57,7 @@ class Mem:
     def clear(self):
         ''' Resetting counters. Old data will be overwritten as the new simulation proceed '''
         self.total_size  = 0         # cur number of particles
-        self._size       = self.new_field(len(Phase), 1, Mem.COUNTER_TYPE) # number of particles of each phase
+        self._size.fill(0)
 
     def add(self, pos, v, f, m, lf, ph):
         i,j = self.total_size, self._size[ph.value]
@@ -110,7 +114,7 @@ class Simulation:
         self.poly6_const        = 315 / 64 / np.pi / self.kernel_size**9
         self.spikyG_const       = -45 / np.pi / self.kernel_size**6
         self.restDensity        = (self.poly6_const * self.kernel_sqr**3) * 0.5 # rho_0 = restDensity / inv_mass
-        self.relaxation         = 5       # applied to lambda 
+        self.relaxation         = 500       # applied to lambda 
         # gas
         self.alpha              = -0.2      # gravity refactor for gas
         # Tensile Instability  (repulsive term S_corr)
@@ -145,12 +149,12 @@ class Simulation:
         self.mem.clear()
         for i in range(30):
             for j in range(30):
-                x = 220 + j * self.kernel_size *0.8
-                y = 15 + i * self.kernel_size * 0.1
+                x = 220 + j * self.kernel_size *0.2
+                y = 15 + i * self.kernel_size * 0.2
                 v = 0.,0.
                 f = 0.,0.
                 mass = 1.
-                life = -1
+                life = -1  
                 phase = Phase.fluid
                 self.mem.add([x,y], v, f, mass, life, phase)
 
@@ -217,10 +221,10 @@ class Simulation:
             if not mem.lifetime[i]:
                 continue
             gridi, gridj = int(mem.newPos[i] / self.grid_size)
-            n = mem.n_in_grid[gridi, gridj]
+            n = ti.atomic_add(mem.n_in_grid[gridi, gridj], 1)
             if n < self.grid_max_capacity:
                 mem.grid[gridi, gridj, n] = i
-                mem.n_in_grid[gridi, gridj] += 1
+                #mem.n_in_grid[gridi, gridj] += 1
         # (3) update neighbour table; look up 9th grids around each particle
         #  ----------
         #  | 0| 1| 2|
@@ -243,9 +247,7 @@ class Simulation:
                             for i in range(mem.n_in_grid[x,y]):
                                 x2 = mem.grid[x,y,i]
                                 if (n_neighbor >= self.max_neighbors): break  
-                                if (x1 == x2): continue 
-                                r = mem.newPos[x2] - mem.newPos[x1]
-                                if (r.norm_sqr() < self.kernel_sqr):
+                                if (x1 != x2 and (mem.newPos[x2] - mem.newPos[x1]).norm_sqr() < self.kernel_sqr):
                                     mem.neighbors[x1, n_neighbor] = x2
                                     n_neighbor += 1
             mem.n_neighbors[x1] = n_neighbor
@@ -289,6 +291,7 @@ class Simulation:
                     cross  = vec3(z=w.norm_sqr()).cross(vec3(x=r[0], y=r[1]))
                     fvort += vec2(cross[0], cross[1]) * self.wSpikyG(r*r)
             mem.force[x1] = fvort
+            #pp(fvort, 1)
         # apply delta
         for xi in range(self.mem._size[ph]):
             x1 = mem.index[ph, xi]
@@ -338,6 +341,7 @@ class Simulation:
     
     def step(self):
         for _ in range(self.substeps):
+            pass
             # time integration - semi-implicit
             self.apply_force()
             # update grid info
@@ -361,22 +365,23 @@ class Simulation:
             self.mem.p2Render[i] = x[0]/w, x[1]/h
 
     def render(self, gui):
-        mem = self.mem
+        timer = clock()
         # Particles
-        x = mem.p2Render.to_numpy()
-        for i in range(mem.total_size):
+        x = self.mem.p2Render.to_numpy()
+        timer = timeit(timer, 'toHost')
+        for i in range(self.mem.total_size):
             # skip dead particles
-            if not mem.lifetime[i]:
+            if not self.mem.lifetime[i]:
                 continue
-            ph = mem.phase[i]
+            ph = self.mem.phase[i]
             if self.display_fluid and ph == Phase.fluid.value:
                 gui.circle(pos=x[i], color=sim.water_color, radius=5)
             elif ph == Phase.gas.value:
                 gui.circle(pos=x[i], color=sim.gas_color, radius=5)
             elif ph == Phase.smoke.value:
                 gui.circle(pos=x[i], color=sim.smoke_color, radius=5) 
-        # Display
-        gui.show()
+        timer = timeit(timer, 'draw')
+        
 
 ## utils
 def vec2(x=0., y=0.):
@@ -386,8 +391,12 @@ def vec3(x=0., y=0., z=0.):
     return ti.Vector([x, y, z])
 
 @ti.func
-def pp(s):
-    print(s)
+def pp(s, i=0):
+    print(i,'===',s)
+
+def timeit(c, what):
+    print(what, clock() - c)
+    return c
 
         
 
@@ -425,8 +434,14 @@ if __name__ == '__main__':
         else:
             sim.attract = 0
 
+        timer = clock()
         if not sim.paused:
             sim.step()
-
+        timer = timeit(timer, 'step')
+        print('???')
         sim.render(gui)
+        timer = timeit(timer, 'render')
+        # Display
+        gui.show()
+        timer = timeit(timer, 'show')
         
