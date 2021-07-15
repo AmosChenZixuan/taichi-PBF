@@ -100,6 +100,7 @@ class Simulation:
         self.solver_iters       = 5
         self.dt = 1 / 60 / self.substeps
         self.gravity = vec2(y=-980.)
+        self.collision_eps      = 5
         # grid 
         self.grid_max_capacity  = 64
         self.max_neighbors      = self.grid_max_capacity
@@ -299,6 +300,8 @@ class Simulation:
     def box_confinement(self):
         mem = self.mem
         l,r,b,t = self.box
+        l += self.collision_eps; b += self.collision_eps
+        r -= self.collision_eps; t -= self.collision_eps
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
             if mem.curPos[i][0] < l:
@@ -372,7 +375,7 @@ class Simulation:
         pos = mem.p2Render.to_numpy()[:size][active]
         
         gui.circles(pos=pos,
-                radius=5,
+                radius=1.5,
                 color=self.palette[ph[active]]
         )
 
