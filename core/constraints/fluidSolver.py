@@ -1,6 +1,59 @@
 import taichi as ti
-
+import numpy as np
+from core.memory import DevMemory
+from include import *
 
 @ti.data_oriented
 class fluidSolver:
-    pass
+    def __init__(self, memory: DevMemory):
+        self.mem   = memory
+        self.ptr   = new_field(memory.capacity, 1, INDEX_TYPE) # global index
+        self._size = new_field((), 1, COUNTER_TYPE)            # number of particles bounbed by this constraint 
+        # const
+        self.kernel_size = 25                   # h value for kernels
+        self.kernel2     = self.kernel_size**2
+        self.poly6_const = 315 / 64 / np.pi / self.kernel_size**9
+        self.spikyG_const= -45 / np.pi / self.kernel_size**6
+        self.restDensity = (self.poly6_const * self.kernel2**3) * 0.5 # rho_0 = restDensity * mass
+        self.relaxation  = 200                  # applied to lambda 
+        # Tensile Instability  (repulsive term S_corr)
+        deltaQ = 0.3 * self.kernel_size         # 0.1h ~ 0.3h
+        self.s_corr_k    = 0.1                  # s_corr = k*(w_ij/wDeltaQ)**n
+        self.s_corr_n    = 4
+        self.s_corr_const= 1 / (self.poly6_const * (self.kernel2 - deltaQ**2) ** 3) # wploy6(deltaQ)
+        # Computational Cache
+        self.lambdas = new_field(memory.capacity, 1)  # constraint
+        self.deltaX  = new_field(memory.capacity)     # position change
+        
+    def add(self, particle:Particle):
+        idx = self._size[None]
+        self.ptr[idx] = particle.id
+        self._size[None] += 1
+
+    def clear(self):
+        self._size[None] = 0
+
+
+
+    @ti.func
+    def size(self):
+        return self._size[None]
+
+    @ti.func
+    def wPoly6(self, r_sqr):
+        ''' poly6 kernel '''
+        ret_val = 0.
+        if r_sqr < self.kernel2:
+            ret_val = self.poly6_const * (self.kernel2 - r_sqr) ** 3
+        return ret_val
+
+
+    @ti.func
+    def wSpikyG(self, r):
+        ''' spiky gradient kernel '''
+        ret_val = vec2()
+        r_norm  = r.norm()
+        if 0 < r_norm < self.kernel_size:
+            ret_val = r / r_norm * self.spikyG_const * (self.kernel_size - r_norm) ** 2
+        return ret_val
+        

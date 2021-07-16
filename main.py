@@ -45,13 +45,15 @@ while gui.running:
     if DEBUG_MODE:
         print(f'===={backend.tick()}====')
         timer = clock()
-
+        # step
         backend.step()
         timer = timeit(timer, 'step')
+        # render
         frontend.render()
-        timer = timeit(timer, 'render')
         frontend.draw_grid(backend.grid)
         frontend.draw_neighbors(backend.grid, 100)
+        timer = timeit(timer, 'render')
+        # display
         gui.show()
         timer = timeit(timer, 'show')
     else:
