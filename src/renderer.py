@@ -60,6 +60,7 @@ class Renderer:
         for i in range(grid.n_neighbors[x1]):
             x2 = grid.neighbors[x1, i]
             pos.append(mem.curPos[x2].value / self.window)
-        self.gui.circles(np.array(pos), radius=3, color=0x00ff00)
+        if pos:
+            self.gui.circles(np.array(pos), radius=3, color=0x00ff00)
 
     
