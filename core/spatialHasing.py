@@ -4,7 +4,7 @@ from include import *
 
 @ti.data_oriented
 class SpatialHasher:
-    def __init__(self, memory: DevMemory,
+    def initialize(self, memory: DevMemory,
             grid_size,
             grid_shape,
             grid_max     = 64,

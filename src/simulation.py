@@ -24,9 +24,9 @@ class Simulation:
         self.renderer = None
         # grid
         self.grid_size = 25
-        self.grid = None
+        self.grid = SpatialHasher()
         # constraints
-        self.solvers = [fluidSolver(self.mem)]
+        self.solvers = [fluidSolver(self.mem, self.grid)]
 
     def tick(self, amount=0):
         self._ticks += amount
@@ -39,7 +39,7 @@ class Simulation:
         w,h = renderer.window
         grid_shape = (w // self.grid_size + 1, 
                         h // self.grid_size + 1)
-        self.grid = SpatialHasher(self.mem, self.grid_size, grid_shape, 64, 64)
+        self.grid.initialize(self.mem, self.grid_size, grid_shape, 64, 64)
 
     def reset(self):
         # reinitialize
@@ -49,7 +49,7 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[FLUID]
-        for i in range(30):
+        for i in range(130):
             for j in range(30):
                 x = 220 + j * 5
                 y = 15 + i * 5
@@ -87,7 +87,7 @@ class Simulation:
             if mem.phase[i] == SMOKE: continue
             # v1 = v0 + f*dt 
             g = self.gravity
-            if mem.phase[i] == GAS or True:
+            if mem.phase[i] == GAS:
                 g *= self.alpha
             mem.velocity[i] += self.dt * (g + mem.force[i])
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
@@ -102,10 +102,9 @@ class Simulation:
             # x1 = x0 + v1*dt
             mem.newPos[i] = mem.curPos[i] + self.dt * mem.velocity[i]
 
-    @ti.kernel
     def project(self):
-        pass
-        # for each solver: solve!
+        for solver in self.solvers:
+            solver.solve()
 
     @ti.kernel
     def box_confinement(self):
