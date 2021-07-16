@@ -90,49 +90,6 @@ class Simulation:
             # estimate
             # x1 = x0 + v1*dt
             mem.newPos[i] = mem.curPos[i] + self.dt * mem.velocity[i]
- 
-    @ti.kernel
-    def find_neighbours(self):
-        return
-        mem = self.mem
-        # (1) clear grid; erase all counters
-        for i, j in mem.n_in_grid:
-            mem.n_in_grid[i,j] = 0
-        # (2) reconstruct grid representation for current state
-        for i in range(mem.size()):
-            if not mem.lifetime[i]:
-                continue
-            gridi, gridj = int(mem.newPos[i] / self.grid_size)
-            n = ti.atomic_add(mem.n_in_grid[gridi, gridj], 1)
-            if n < self.grid_max_capacity:
-                mem.grid[gridi, gridj, n] = i
-                #mem.n_in_grid[gridi, gridj] += 1
-        # (3) update neighbour table; look up 9th grids around each particle
-        #  ----------
-        #  | 0| 1| 2|
-        #  ----------
-        #  | 3| p| 5|
-        #  ----------
-        #  | 6| 7| 8|
-        #  ----------
-        for x1 in range(mem.size()):
-            if not mem.lifetime[x1]:
-                continue
-            n_neighbor = 0
-            gridi, gridj = int(mem.newPos[x1] / self.grid_size)
-            for dy in ti.static(range(-1,2)):
-                y = gridj + dy
-                if 0 <= y < self.grid_shape[1]:
-                    for dx in ti.static(range(-1,2)):
-                        x = gridi + dx
-                        if 0 <= x < self.grid_shape[0]: 
-                            for i in range(mem.n_in_grid[x,y]):
-                                x2 = mem.grid[x,y,i]
-                                if (n_neighbor >= self.max_neighbors): break  
-                                if (x1 != x2 and (mem.newPos[x2] - mem.newPos[x1]).norm_sqr() < self.kernel_sqr):
-                                    mem.neighbors[x1, n_neighbor] = x2
-                                    n_neighbor += 1
-            mem.n_neighbors[x1] = n_neighbor
 
     @ti.kernel
     def project(self):
@@ -191,7 +148,7 @@ class Simulation:
             # time integration - semi-implicit
             self.apply_force()
             # update grid info
-            self.find_neighbours()
+            self.grid.step()
             # non-linear Jacobi Iteration
             for _ in range(self.solver_iters): 
                 self.project()

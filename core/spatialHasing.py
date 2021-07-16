@@ -61,7 +61,7 @@ class SpatialHasher:
         mem = self.mem
         for x1 in range(mem.size()):
             # skip dead
-            if not mem.lifetime[i]: continue
+            if not mem.lifetime[x1]: continue
             neighbor_idx = 0
             gridi, gridj = int(mem.newPos[x1] / self.grid_size)
             for dy in ti.static(range(-1,2)):
