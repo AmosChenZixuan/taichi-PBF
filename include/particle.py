@@ -1,6 +1,6 @@
 from enum import Enum, unique
-from src.vector import vec2
-
+from include.vector import *
+import numpy as np
 
 '''
 0. Fluid particle: Basic unit in PBF
@@ -16,6 +16,9 @@ class Phase(Enum):
     fluid = FLUID
     gas   = GAS
     smoke = SMOKE
+
+# particle colors to be rendered
+PALETTE = np.array([0x328ac1, 0xff1c8a, 0x959595])
 
 class Particle:
     ''' 

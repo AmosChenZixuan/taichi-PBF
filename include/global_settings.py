@@ -1,5 +1,4 @@
 import taichi as ti
-from src.vector import *
 
 # architeture to run on
 ARCH = ti.gpu
