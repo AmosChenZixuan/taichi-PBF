@@ -1,6 +1,6 @@
 import taichi as ti
 from include import *
-from src import Simulation, Renderer
+from src import Simulation, Renderer, renderer
 from time import perf_counter as clock
 ti.init(arch=ARCH)
 
@@ -50,6 +50,8 @@ while gui.running:
         timer = timeit(timer, 'step')
         frontend.render()
         timer = timeit(timer, 'render')
+        frontend.draw_grid(backend.grid)
+        frontend.draw_neighbors(backend.grid, 100)
         gui.show()
         timer = timeit(timer, 'show')
     else:

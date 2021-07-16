@@ -1,4 +1,5 @@
 import taichi as ti
+import numpy as np
 from include import *
 from core import DevMemory
 
@@ -37,3 +38,28 @@ class Renderer:
                 radius=4,
                 color=PALETTE[ph[active]]
         )
+
+    def draw_grid(self, grid):
+        size = grid.grid_size
+        x,y = grid.grid_shape
+        w,h = self.window
+        vert = [i*size/w for i in range(x)]
+        hort = [i*size/h for i in range(y)]
+
+        self.gui.lines(np.array([[m,0]for m in vert]), 
+            np.array([[m,1]for m in vert]),
+            color=self.bg_color, radius=1)
+
+        self.gui.lines(np.array([[0,m]for m in hort]), 
+            np.array([[1,m]for m in hort]), 
+            color=self.bg_color, radius=1)
+
+    def draw_neighbors(self, grid, x1):
+        mem = self.mem
+        pos = []
+        for i in range(grid.n_neighbors[x1]):
+            x2 = grid.neighbors[x1, i]
+            pos.append(mem.curPos[x2].value / self.window)
+        self.gui.circles(np.array(pos), radius=3, color=0x00ff00)
+
+    
