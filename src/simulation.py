@@ -1,6 +1,7 @@
 import taichi as ti
 from include import *
 from core import DevMemory, SpatialHasher
+from core.constraints import *
 from src.renderer import Renderer
 
 @ti.data_oriented
@@ -24,6 +25,8 @@ class Simulation:
         # grid
         self.grid_size = 25
         self.grid = None
+        # constraints
+        self.solvers = [fluidSolver(self.mem)]
 
     def tick(self, amount=0):
         self._ticks += amount
@@ -39,14 +42,22 @@ class Simulation:
         self.grid = SpatialHasher(self.mem, self.grid_size, grid_shape, 64, 64)
 
     def reset(self):
-        self.mem.clear()
+        # reinitialize
+        mem = self.mem
+        mem.clear()
+        for s in self.solvers:
+            s.clear()
+        # add water
+        solver = self.solvers[FLUID]
         for i in range(30):
             for j in range(30):
                 x = 220 + j * 5
                 y = 15 + i * 5
-                p = Particle(self.mem.getNextId(), [x,y], mass=1., phase=FLUID)
-                self.mem.add(p)
+                p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
+                mem.add(p)
                 # TODO add fluid contraints
+                solver.add(p)
+
 
     def emit_smoke(self):
         gas_row, gas_col = 2, 3
@@ -68,9 +79,8 @@ class Simulation:
                 self.mem.add(p)
 
     @ti.kernel
-    def apply_force(self):
+    def apply_force(self, mouse_x: ti.f32, mouse_y: ti.f32, attract: ti.i32):
         mem = self.mem
-        rend = self.renderer
         for i in range(mem.size()):
             # skip dead or visual particles
             if not mem.lifetime[i]: continue
@@ -81,12 +91,13 @@ class Simulation:
                 g *= self.alpha
             mem.velocity[i] += self.dt * (g + mem.force[i])
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
-            if rend.attract:
-                x, y = rend.mouse_pos * rend.window
+            if attract:
+                w,h = self.renderer.window
+                x, y =  mouse_x * w, mouse_y * h
                 r = vec2(x, y) - mem.curPos[i]
                 r_norm = r.norm()
                 if r_norm > 15:
-                    mem.velocity[i] += rend.attract * self.dt * 5e6 * r / r_norm ** 3 
+                    mem.velocity[i] += attract * self.dt * 5e6 * r / r_norm ** 3 
             # estimate
             # x1 = x0 + v1*dt
             mem.newPos[i] = mem.curPos[i] + self.dt * mem.velocity[i]
@@ -146,7 +157,8 @@ class Simulation:
             return
         for _ in range(self.substeps):
             # time integration - semi-implicit
-            self.apply_force()
+            x,y = self.renderer.mouse_pos
+            self.apply_force(x,y, self.renderer.attract)
             # update grid info
             self.grid.step()
             # non-linear Jacobi Iteration
