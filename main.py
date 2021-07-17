@@ -1,6 +1,6 @@
 import taichi as ti
 from include import *
-from src import Simulation, Renderer, renderer
+from src import Simulation, Renderer
 from time import perf_counter as clock
 ti.init(arch=ARCH)
 

@@ -6,13 +6,13 @@ from include import *
 
 @ti.data_oriented
 class fluidSolver:
-    def __init__(self, memory: DevMemory, grid:SpatialHasher):
+    def __init__(self, memory: DevMemory, grid:SpatialHasher, h):
         self.mem   = memory
         self.grid  = grid
         self.ptr   = new_field(memory.capacity, 1, INDEX_TYPE) # global index
         self._size = new_field((), 1, COUNTER_TYPE)            # number of particles bounbed by this constraint 
         # const
-        self.kernel_size = 25                   # h value for kernels
+        self.kernel_size = h                   # h value for kernels
         self.kernel2     = self.kernel_size**2
         self.poly6_const = 315 / 64 / np.pi / self.kernel_size**9
         self.spikyG_const= -45 / np.pi / self.kernel_size**6

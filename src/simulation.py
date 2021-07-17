@@ -17,7 +17,7 @@ class Simulation:
         self.gravity            = vec2(y=-980.)
         self.alpha              = -0.2          # gravity refactor for gas
         self.collision_eps      = 5
-        self.bbox               = 0,600,0,590
+        self.bbox               = 0,100,0,100
         # Memory
         self.mem = DevMemory()
         # renderer
@@ -26,7 +26,7 @@ class Simulation:
         self.grid_size = 25
         self.grid = SpatialHasher()
         # constraints
-        self.solvers = [fluidSolver(self.mem, self.grid)]
+        self.solvers = [fluidSolver(self.mem, self.grid, self.grid_size)]
 
     def tick(self, amount=0):
         self._ticks += amount
@@ -35,11 +35,12 @@ class Simulation:
     def register_externals(self, renderer: Renderer):
         self.renderer = renderer
         renderer.registrating(self.mem)
+        self.bbox     = 0, renderer.window[0], 0, renderer.window[1]-10
         # intialize spatial hasher
         w,h = renderer.window
         grid_shape = (w // self.grid_size + 1, 
                         h // self.grid_size + 1)
-        self.grid.initialize(self.mem, self.grid_size, grid_shape, 64, 64)
+        self.grid.initialize(self.mem, self.grid_size, grid_shape, 564, 564)
 
     def reset(self):
         # reinitialize
@@ -51,8 +52,8 @@ class Simulation:
         solver = self.solvers[FLUID]
         for i in range(130):
             for j in range(30):
-                x = 220 + j * 5
-                y = 15 + i * 5
+                x = 220 + j * 0.5 * self.grid_size
+                y = 15 + i * 0.5 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
                 mem.add(p)
                 # TODO add fluid contraints
