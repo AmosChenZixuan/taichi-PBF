@@ -63,8 +63,9 @@ class fluidSolver:
                 sum_Ci             += grad
                 sum_grad_pk_Ci_sqr += grad.norm_sqr()
                 rho_i              += self.wPoly6(r.norm_sqr())
-            C_i = (rho_i / self.restDensity / mem.mass[x1]) - 1
-            self.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + sum_Ci.norm_sqr() + self.relaxation)
+            C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
+            sum_grad_pk_Ci_sqr += sum_Ci.norm_sqr()
+            self.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)
 
 
 

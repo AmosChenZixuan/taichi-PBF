@@ -40,6 +40,8 @@ class Renderer:
         )
 
     def draw_grid(self, grid):
+        if not DRAW_GRID:
+            return
         size = grid.grid_size
         x,y = grid.grid_shape
         w,h = self.window
@@ -55,12 +57,17 @@ class Renderer:
             color=self.bg_color, radius=1)
 
     def draw_neighbors(self, grid, x1):
+        if not DRAW_NEIGHBOR:
+            return
         mem = self.mem
         pos = []
+        id = []
         for i in range(grid.n_neighbors[x1]):
             x2 = grid.neighbors[x1, i]
+            id.append(x2)
             pos.append(mem.curPos[x2].value / self.window)
         if pos:
+            print(len(id), sorted(id))
             self.gui.circles(np.array(pos), radius=3, color=0x00ff00)
 
     

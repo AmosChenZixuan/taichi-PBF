@@ -5,6 +5,8 @@ ARCH = ti.gpu
 
 # if turn on, sanity checks will be performed during simulation
 DEBUG_MODE = True
+DRAW_GRID = True
+DRAW_NEIGHBOR = False
 
 # max number of particles allowed
 # TODO: make it dynamic 

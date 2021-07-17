@@ -114,14 +114,14 @@ class Simulation:
         r -= self.collision_eps; t -= self.collision_eps
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
-            if mem.curPos[i][0] < l:
-                mem.curPos[i][0] = l 
-            if mem.curPos[i][0] > r:
-                mem.curPos[i][0] = r  
-            if mem.curPos[i][1] < b:
-                mem.curPos[i][1] = b 
-            if mem.curPos[i][1] > t:
-                mem.curPos[i][1] = t
+            if mem.newPos[i][0] < l:
+                mem.newPos[i][0] = l + ti.random()
+            if mem.newPos[i][0] > r:
+                mem.newPos[i][0] = r  + ti.random()
+            if mem.newPos[i][1] < b:
+                mem.newPos[i][1] = b + ti.random()
+            if mem.newPos[i][1] > t:
+                mem.newPos[i][1] = t + ti.random()
 
     @ti.kernel
     def update(self):
@@ -158,6 +158,7 @@ class Simulation:
             # time integration - semi-implicit
             x,y = self.renderer.mouse_pos
             self.apply_force(x,y, self.renderer.attract)
+            self.box_confinement()
             # update grid info
             self.grid.step()
             # non-linear Jacobi Iteration
@@ -165,4 +166,3 @@ class Simulation:
                 self.project()
             # update v and pos
             self.update()
-            self.box_confinement()

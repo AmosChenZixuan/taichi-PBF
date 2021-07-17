@@ -51,7 +51,7 @@ while gui.running:
         # render
         frontend.render()
         frontend.draw_grid(backend.grid)
-        frontend.draw_neighbors(backend.grid, 1000)
+        frontend.draw_neighbors(backend.grid, 10)
         timer = timeit(timer, 'render')
         # display
         gui.show()
