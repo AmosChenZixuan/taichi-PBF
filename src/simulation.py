@@ -40,7 +40,7 @@ class Simulation:
         w,h = renderer.window
         grid_shape = (w // self.grid_size + 1, 
                         h // self.grid_size + 1)
-        self.grid.initialize(self.mem, self.grid_size, grid_shape, 564, 564)
+        self.grid.initialize(self.mem, self.grid_size, grid_shape, 64, 64)
 
     def reset(self):
         # reinitialize

@@ -61,13 +61,14 @@ class Renderer:
             return
         mem = self.mem
         pos = []
-        id = []
+        #id = []
         for i in range(grid.n_neighbors[x1]):
             x2 = grid.neighbors[x1, i]
-            id.append(x2)
             pos.append(mem.curPos[x2].value / self.window)
+            #     id.append(x2)
         if pos:
-            print(len(id), sorted(id))
+            #print(len(id), sorted(id))
+            self.gui.circle(mem.curPos[x1].value / self.window, radius=3, color=0xff0000)
             self.gui.circles(np.array(pos), radius=3, color=0x00ff00)
 
     
