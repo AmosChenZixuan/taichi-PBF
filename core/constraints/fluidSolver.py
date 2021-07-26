@@ -23,9 +23,7 @@ class fluidSolver:
         self.s_corr_k    = 0.1                  # s_corr = k*(w_ij/wDeltaQ)**n
         self.s_corr_n    = 4
         self.s_corr_const= 1 / (self.poly6_const * (self.kernel2 - deltaQ**2) ** 3) # wploy6(deltaQ)
-        # Computational Cache
-        self.lambdas = new_field(memory.capacity, 1)  # constraint
-        self.deltaX  = new_field(memory.capacity)     # position change
+        
         
     def solve(self):
         self.calc_lambda()
@@ -65,7 +63,7 @@ class fluidSolver:
                 rho_i              += self.wPoly6(r.norm_sqr())
             C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
             sum_grad_pk_Ci_sqr += sum_Ci.norm_sqr()
-            self.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)
+            mem.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)
 
 
 
@@ -88,8 +86,8 @@ class fluidSolver:
                 if mem.phase[x2] == SMOKE: continue 
                 r      = mem.newPos[x1] - mem.newPos[x2]
                 s_corr = -self.s_corr_k * (self.wPoly6(r.norm_sqr()) * self.s_corr_const) ** self.s_corr_n
-                delta += (self.lambdas[x1] + self.lambdas[x2] + s_corr) * self.wSpikyG(r)
-            self.deltaX[x1] = delta
+                delta += (mem.lambdas[x1] + mem.lambdas[x2] + s_corr) * self.wSpikyG(r)
+            mem.deltaX[x1] = delta
 
     @ti.kernel
     def project(self):
@@ -97,7 +95,7 @@ class fluidSolver:
         for i in range(self.size()):
             x1 = self.ptr[i]
             if not mem.lifetime[x1]: continue
-            mem.newPos[x1] += self.deltaX[x1] / self.restDensity / mem.mass[x1]
+            mem.newPos[x1] += mem.deltaX[x1] / self.restDensity / mem.mass[x1]
 
     
     

@@ -7,7 +7,7 @@ class DevMemory:
         self.capacity = capacity                            # max number of particles
         self.dev_size = new_field((), 1, COUNTER_TYPE) # cur number of particles(on device)
         self.hst_size = 0                                   # cur number of particles(on host)
-         # PBDynamics
+        # PBDynamics
         self.curPos     = new_field(capacity) # X, true position
         self.newPos     = new_field(capacity) # P, estimated position
         self.velocity   = new_field(capacity) # V, velocity
@@ -15,6 +15,9 @@ class DevMemory:
         self.mass       = new_field(capacity, 1) 
         self.phase      = new_field(capacity, 1, PHASE_TYPE)
         self.lifetime   = new_field(capacity, 1, COUNTER_TYPE)  # [-1]not applicable; [0]dead; [>0]alive
+        # Computational Cache
+        self.lambdas = new_field(capacity, 1)  # constraint
+        self.deltaX  = new_field(capacity)     # position change
     
         
     def clear(self):
