@@ -5,7 +5,7 @@ from include import *
 class DevMemory:
     def __init__(self, capacity = MEM_CAPACITY):
         self.capacity = capacity                            # max number of particles
-        self.dev_size = new_field((), 1, COUNTER_TYPE) # cur number of particles(on device)
+        self.dev_size = new_field((), 1, COUNTER_TYPE)      # cur number of particles(on device)
         self.hst_size = 0                                   # cur number of particles(on host)
         # PBDynamics
         self.curPos     = new_field(capacity) # X, true position
@@ -18,6 +18,7 @@ class DevMemory:
         # Computational Cache
         self.lambdas = new_field(capacity, 1)  # constraint
         self.deltaX  = new_field(capacity)     # position change
+        self.density = new_field(capacity, 1)
     
         
     def clear(self):

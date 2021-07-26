@@ -23,6 +23,9 @@ class fluidSolver:
         self.s_corr_k    = 0.1                  # s_corr = k*(w_ij/wDeltaQ)**n
         self.s_corr_n    = 4
         self.s_corr_const= 1 / (self.poly6_const * (self.kernel2 - deltaQ**2) ** 3) # wploy6(deltaQ)
+        # Surface Tension
+        self.gamma       = 0.001
+        self.cohes_const = 32 / np.pi / self.kernel_size**9
         
         
     def solve(self):
@@ -63,6 +66,8 @@ class fluidSolver:
             C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
             sum_grad_pk_Ci_sqr += sum_Ci.norm_sqr()
             mem.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)
+            # cache for later computation
+            mem.density[x1] = rho_i
 
 
 
@@ -95,8 +100,27 @@ class fluidSolver:
             if not mem.lifetime[x1]: continue
             mem.newPos[x1] += mem.deltaX[x1] / self.restDensity / mem.mass[x1]
 
-    
-    
+    @ti.kernel
+    def applySurfaceTension(self):
+        mem = self.mem
+        grid = self.grid
+        for i in range(self.size()):
+            x1 = self.ptr[i]
+            if not mem.lifetime[x1]: continue
+            force     = vec2()
+            curvature = vec2()
+            for j in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, j]
+                r  = mem.newPos[x1] - mem.newPos[x2]
+                # Cohesion
+                d       = 2 * self.restDensity * mem.mass[x1] / (mem.density[x1] + mem.density[x2])
+                C       = self.wCohesion(r.norm())
+                f_cohes = self.gamma * mem.mass[x1] * mem.mass[x2] * C * r.normalized()
+                # Curvature
+                force  += d * f_cohes 
+            mem.force[x1] += force
+
+
     def add(self, particle:Particle):
         idx = self._size[None]
         self.ptr[idx] = particle.id
@@ -127,3 +151,11 @@ class fluidSolver:
             ret_val = r / r_norm * self.spikyG_const * (self.kernel_size - r_norm) ** 2
         return ret_val
         
+    @ti.func
+    def wCohesion(self, r_norm):
+        ret_val = 0.
+        if 2*r_norm > self.kernel_size and r_norm <= self.kernel_size:
+            ret_val = self.cohes_const * (self.kernel_size - r_norm)**3 * r_norm**3
+        elif r_norm > 0 and 2*r_norm <= self.kernel_size:
+            ret_val = self.cohes_const * 2 * (self.kernel_size - r_norm)**3 * r_norm**3 - (self.kernel_size**6 / 64)
+        return ret_val

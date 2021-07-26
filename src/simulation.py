@@ -15,7 +15,7 @@ class Simulation:
         self.solver_iters       = 5
         self.dt                 = 1 / 60 / self.substeps
         self.gravity            = vec2(y=-980.)
-        self.alpha              = -0.2          # gravity refactor for gas
+        self.alpha              = -0.05         # gravity refactor for gas
         self.collision_eps      = 5
         self.bbox               = 0,100,0,100
         # Memory
@@ -51,12 +51,12 @@ class Simulation:
         for s in self.solvers:
             s.clear()
         # add water
-        solver = self.solvers[FLUID]
-        for i in range(20):
-            for j in range(20):
-                x = 220 + j * 0.5 * self.grid_size
-                y = 15 + i * 0.5 * self.grid_size
-                p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
+        solver = self.solvers[GAS]
+        for i in range(0):
+            for j in range(0):
+                x = 160 + j * 0.4 * self.grid_size
+                y = 130 + i * 0.4 * self.grid_size
+                p = Particle(mem.getNextId(), [x,y], mass=1., phase=GAS)
                 mem.add(p)
                 solver.add(p)
 
@@ -64,13 +64,14 @@ class Simulation:
     def emit_smoke(self):
         gas_row, gas_col = 2, 3
         smk_row, smk_col = 2, 1
+        life = 30000
         # gas
         solver = self.solvers[GAS]
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 15
                 y = 20 + i * 15
-                p = Particle(self.mem.getNextId(), [x,y], mass=1.5, lifetime=-1, phase=GAS)
+                p = Particle(self.mem.getNextId(), [x,y], mass=1.5, lifetime=life, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
         # smoke
@@ -78,7 +79,7 @@ class Simulation:
             for j in range(smk_col):
                 x = 305 + j * 15
                 y = 26.5 + i * 2
-                p = Particle(self.mem.getNextId(), [x,y], lifetime=-1, phase=SMOKE)
+                p = Particle(self.mem.getNextId(), [x,y], lifetime=life, phase=SMOKE)
                 self.mem.add(p)
 
     @ti.kernel
@@ -122,13 +123,13 @@ class Simulation:
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
             if mem.newPos[i][0] < l:
-                mem.newPos[i][0] = l + ti.random()
+                mem.newPos[i][0] = l #+ ti.random()
             if mem.newPos[i][0] > r:
-                mem.newPos[i][0] = r  - ti.random()
+                mem.newPos[i][0] = r  #- ti.random()
             if mem.newPos[i][1] < b:
-                mem.newPos[i][1] = b + ti.random()
+                mem.newPos[i][1] = b #+ ti.random()
             if mem.newPos[i][1] > t:
-                mem.newPos[i][1] = t - ti.random()
+                mem.newPos[i][1] = t #- ti.random()
 
     @ti.kernel
     def update(self):
@@ -205,6 +206,10 @@ class Simulation:
                 visc     += vel_diff
             mem.velocity[x1] += visc * 0.01
 
+    def applySurfaceTension(self):
+        self.solvers[FLUID].applySurfaceTension()
+        self.solvers[GAS].applySurfaceTension()
+
     def step(self):
         if self.paused:
             return
@@ -220,5 +225,7 @@ class Simulation:
                 self.project()
             # update v and pos
             self.update()
-            self.vorticity_confinement()
-            self.xsphViscosity()
+            # additional fources
+            self.vorticity_confinement()  # artificial curl force
+            self.xsphViscosity()          # artificial damping
+            self.applySurfaceTension()    #   
