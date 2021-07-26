@@ -52,8 +52,8 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[GAS]
-        for i in range(0):
-            for j in range(0):
+        for i in range(30):
+            for j in range(30):
                 x = 160 + j * 0.4 * self.grid_size
                 y = 130 + i * 0.4 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=GAS)
@@ -204,7 +204,7 @@ class Simulation:
                 r        = mem.curPos[x1] - mem.curPos[x2]
                 vel_diff *= self.solvers[GAS].wPoly6(r.norm_sqr())
                 visc     += vel_diff
-            mem.velocity[x1] += visc * 0.01
+            mem.velocity[x1] += visc * 200
 
     def applySurfaceTension(self):
         self.solvers[FLUID].applySurfaceTension()
