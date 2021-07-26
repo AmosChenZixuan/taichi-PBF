@@ -73,7 +73,8 @@ class SpatialHasher:
                             for i in range(self.n_in_grid[x,y]):
                                 x2 = self.grid[x,y,i]
                                 if (neighbor_idx >= self.neighbors_max): break
-                                if (x1 != x2 and (mem.newPos[x2] - mem.newPos[x1]).norm_sqr() < self.grid2):
+                                if (x1 != x2 and mem.phase[x2]!=SMOKE and 
+                                    (mem.newPos[x2] - mem.newPos[x1]).norm_sqr() < self.grid2):
                                     self.neighbors[x1, neighbor_idx] = x2
                                     neighbor_idx += 1
             self.n_neighbors[x1] = neighbor_idx

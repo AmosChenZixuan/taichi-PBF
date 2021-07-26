@@ -55,7 +55,6 @@ class fluidSolver:
             sum_grad_pk_Ci_sqr = 0.
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]
-                if mem.phase[x2] == SMOKE: continue 
                 r    = mem.newPos[x1] - mem.newPos[x2]
                 grad = self.wSpikyG(r) / self.restDensity / mem.mass[x1]
                 sum_Ci             += grad
@@ -83,7 +82,6 @@ class fluidSolver:
             delta = vec2()
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]
-                if mem.phase[x2] == SMOKE: continue 
                 r      = mem.newPos[x1] - mem.newPos[x2]
                 s_corr = -self.s_corr_k * (self.wPoly6(r.norm_sqr()) * self.s_corr_const) ** self.s_corr_n
                 delta += (mem.lambdas[x1] + mem.lambdas[x2] + s_corr) * self.wSpikyG(r)
