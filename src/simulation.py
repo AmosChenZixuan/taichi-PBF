@@ -52,8 +52,8 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[FLUID]
-        for i in range(10):
-            for j in range(10):
+        for i in range(20):
+            for j in range(20):
                 x = 220 + j * 0.5 * self.grid_size
                 y = 15 + i * 0.5 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
@@ -63,7 +63,7 @@ class Simulation:
 
     def emit_smoke(self):
         gas_row, gas_col = 2, 3
-        smk_row, smk_col = 2, 2
+        smk_row, smk_col = 2, 1
         # gas
         solver = self.solvers[GAS]
         for i in range(gas_row):
@@ -76,7 +76,7 @@ class Simulation:
         # smoke
         for i in range(smk_row):
             for j in range(smk_col):
-                x = 297.5 + j * 15
+                x = 305 + j * 15
                 y = 26.5 + i * 2
                 p = Particle(self.mem.getNextId(), [x,y], lifetime=-1, phase=SMOKE)
                 self.mem.add(p)
@@ -158,7 +158,9 @@ class Simulation:
 
     @ti.kernel
     def vorticity_confinement(self):
-        # TODO: Gradient Buffer to remove duplicate computation
+        '''
+            fvort = eps * (N x omega)
+        '''
         mem  = self.mem
         grid = self.grid
         for x1 in range(mem.size()):
@@ -182,7 +184,26 @@ class Simulation:
             # update if there is an eta direction
             if eta.norm() > 0:
                 n = eta.normalized()
-                mem.velocity[x1] += n.cross(omega) * 1000
+                mem.velocity[x1] += n.cross(omega) * 800
+
+    @ti.kernel
+    def xsphViscosity(self):
+        '''
+            v_new = v + c * SUM_J{ Vij * poly(Pij) }
+        '''
+        mem  = self.mem
+        grid = self.grid
+        for x1 in range(mem.size()):
+            if not mem.lifetime[x1]: continue
+            if not mem.phase[x1] == GAS: continue  # only applied to gas
+            visc = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                vel_diff = mem.velocity[x2] - mem.velocity[x1]
+                r        = mem.curPos[x1] - mem.curPos[x2]
+                vel_diff *= self.solvers[GAS].wPoly6(r.norm_sqr())
+                visc     += vel_diff
+            mem.velocity[x1] += visc * 0.01
 
     def step(self):
         if self.paused:
@@ -200,3 +221,4 @@ class Simulation:
             # update v and pos
             self.update()
             self.vorticity_confinement()
+            self.xsphViscosity()
