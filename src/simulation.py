@@ -26,7 +26,9 @@ class Simulation:
         self.grid_size = 25
         self.grid = SpatialHasher()
         # constraints
-        self.solvers = [fluidSolver(self.mem, self.grid, self.grid_size)]
+        self.solvers = [fluidSolver(self.mem, self.grid, self.grid_size),
+                        gasSolver(self.mem, self.grid, self.grid_size)
+                    ]
 
     def tick(self, amount=0):
         self._ticks += amount
@@ -50,13 +52,12 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[FLUID]
-        for i in range(130):
-            for j in range(30):
+        for i in range(10):
+            for j in range(10):
                 x = 220 + j * 0.5 * self.grid_size
                 y = 15 + i * 0.5 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
                 mem.add(p)
-                # TODO add fluid contraints
                 solver.add(p)
 
 
@@ -64,19 +65,20 @@ class Simulation:
         gas_row, gas_col = 2, 3
         smk_row, smk_col = 1, 1
         # gas
+        solver = self.solvers[GAS]
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 15
                 y = 20 + i * 15
                 p = Particle(self.mem.getNextId(), [x,y], mass=1.5, phase=GAS)
                 self.mem.add(p)
-                # TODO add gas contraints
+                solver.add(p)
         # smoke
         for i in range(smk_row):
             for j in range(smk_col):
                 x = 290 + j * 2
                 y = 20 + i * 2
-                p = Particle(self.mem.getNextId(), [x,y], lifetime=1000, phase=SMOKE)
+                p = Particle(self.mem.getNextId(), [x,y], lifetime=10, phase=SMOKE)
                 self.mem.add(p)
 
     @ti.kernel
@@ -91,6 +93,8 @@ class Simulation:
             if mem.phase[i] == GAS:
                 g *= self.alpha
             mem.velocity[i] += self.dt * (g + mem.force[i])
+            # reset acceleration
+            mem.force[i] = 0,0
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
             if attract:
                 w,h = self.renderer.window
@@ -118,19 +122,19 @@ class Simulation:
             if mem.newPos[i][0] < l:
                 mem.newPos[i][0] = l + ti.random()
             if mem.newPos[i][0] > r:
-                mem.newPos[i][0] = r  + ti.random()
+                mem.newPos[i][0] = r  - ti.random()
             if mem.newPos[i][1] < b:
                 mem.newPos[i][1] = b + ti.random()
             if mem.newPos[i][1] > t:
-                mem.newPos[i][1] = t + ti.random()
+                mem.newPos[i][1] = t - ti.random()
 
     @ti.kernel
     def update(self):
         mem = self.mem
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
-            if mem.phase[i] == SMOKE: continue
             mem.lifetime[i] -= 1
+            if mem.phase[i] == SMOKE: continue
             mem.velocity[i] = (mem.newPos[i] - mem.curPos[i]) / self.dt * 0.99
             mem.curPos[i]   = mem.newPos[i]
         # # Advect smoke
