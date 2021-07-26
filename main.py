@@ -27,6 +27,10 @@ while gui.running:
             backend.reset()
         elif e.key == 'e':
             frontend.display_fluid = not frontend.display_fluid
+        elif e.key == 't':
+            backend.paused = False
+            backend.step()
+            backend.paused = True
         elif e.key == gui.SPACE:
             backend.emit_smoke()
     if False:

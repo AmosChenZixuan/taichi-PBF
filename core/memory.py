@@ -37,6 +37,7 @@ class DevMemory:
             assert self.getNextId() == particle.id
         idx = self.getNextId()
         self.curPos[idx]    = particle.pos
+        self.newPos[idx]    = particle.pos
         self.velocity[idx]  = particle.vel
         self.force[idx]     = particle.acc
         self.mass[idx]      = particle.mass

@@ -52,8 +52,8 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[FLUID]
-        for i in range(10):
-            for j in range(10):
+        for i in range(0):
+            for j in range(0):
                 x = 220 + j * 0.5 * self.grid_size
                 y = 15 + i * 0.5 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
@@ -63,22 +63,22 @@ class Simulation:
 
     def emit_smoke(self):
         gas_row, gas_col = 2, 3
-        smk_row, smk_col = 1, 1
+        smk_row, smk_col = 2, 2
         # gas
         solver = self.solvers[GAS]
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 15
                 y = 20 + i * 15
-                p = Particle(self.mem.getNextId(), [x,y], mass=1.5, phase=GAS)
+                p = Particle(self.mem.getNextId(), [x,y], mass=1.5, lifetime=-1, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
         # smoke
         for i in range(smk_row):
             for j in range(smk_col):
-                x = 290 + j * 2
-                y = 20 + i * 2
-                p = Particle(self.mem.getNextId(), [x,y], lifetime=10, phase=SMOKE)
+                x = 297.5 + j * 15
+                y = 26.5 + i * 2
+                p = Particle(self.mem.getNextId(), [x,y], lifetime=-1, phase=SMOKE)
                 self.mem.add(p)
 
     @ti.kernel
@@ -92,6 +92,8 @@ class Simulation:
             g = self.gravity
             if mem.phase[i] == GAS:
                 g *= self.alpha
+            if DEBUG_MODE and mem.force[i].norm() > 0:
+                print(mem.force[i])
             mem.velocity[i] += self.dt * (g + mem.force[i])
             # reset acceleration
             mem.force[i] = 0,0
@@ -131,30 +133,56 @@ class Simulation:
     @ti.kernel
     def update(self):
         mem = self.mem
+        grid = self.grid
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
             mem.lifetime[i] -= 1
             if mem.phase[i] == SMOKE: continue
             mem.velocity[i] = (mem.newPos[i] - mem.curPos[i]) / self.dt * 0.99
             mem.curPos[i]   = mem.newPos[i]
-        # # Advect smoke
-        # ph = Phase.smoke.value
-        # for xi in range(self.mem._size[ph]):
-        #     x1 = mem.index[ph, xi]
-        #     if not mem.lifetime[x1]: continue
-        #     Vsum = vec2()
-        #     Wsum = 0.
-        #     for i in range(mem.n_neighbors[x1]):
-        #         x2 = mem.neighbors[x1, i]
-        #         if mem.phase[x2] == Phase.smoke.value: continue
-        #         r = mem.curPos[x1] - mem.curPos[x2]
-        #         w = self.wPoly6(r.norm_sqr())
-        #         Vsum += w * mem.velocity[x2]
-        #         Wsum += w
-        #     if Wsum > 0.:
-        #         mem.velocity[x1] = Vsum / Wsum
+        # Advect Smoke
+        for x1 in range(mem.size()):
+            if not mem.lifetime[x1]: continue
+            if mem.phase[x1] != SMOKE: continue
+            vsum = vec2()
+            wsum = 0.
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                r  = mem.curPos[x1] - mem.curPos[x2]
+                w  = self.solvers[GAS].wPoly6(r.norm_sqr())
+                vsum += w * mem.velocity[x2]
+                wsum += w
+            if wsum > 0:
+                mem.curPos[x1] += vsum / wsum * self.dt
+                mem.newPos[x1] = mem.curPos[x1]
 
-
+    @ti.kernel
+    def vorticity_confinement(self):
+        # TODO: Gradient Buffer to remove duplicate computation
+        mem  = self.mem
+        grid = self.grid
+        for x1 in range(mem.size()):
+            if not mem.lifetime[x1]: continue
+            if not mem.phase[x1] == GAS: continue  # only applied to gas
+            # angular velocity
+            omega = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                vel_diff = mem.velocity[x2] - mem.velocity[x1]
+                r        = mem.curPos[x1] - mem.curPos[x2]
+                grad     = self.solvers[GAS].wSpikyG(r)
+                omega   += vel_diff.cross(grad)
+            # direction of corrective force
+            eta = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2   = grid.neighbors[x1, i]
+                r    = mem.curPos[x1] - mem.curPos[x2]
+                grad = self.solvers[GAS].wSpikyG(r)
+                eta += grad * omega.norm()
+            # update if there is an eta direction
+            if eta.norm() > 0:
+                n = eta.normalized()
+                mem.velocity[x1] += n.cross(omega) * 1000
 
     def step(self):
         if self.paused:
@@ -171,3 +199,4 @@ class Simulation:
                 self.project()
             # update v and pos
             self.update()
+            self.vorticity_confinement()

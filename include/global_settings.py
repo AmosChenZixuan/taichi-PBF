@@ -4,7 +4,7 @@ import taichi as ti
 ARCH = ti.gpu
 
 # if turn on, sanity checks will be performed during simulation
-DEBUG_MODE = True
+DEBUG_MODE = False
 DRAW_GRID = True
 DRAW_NEIGHBOR = False
 
