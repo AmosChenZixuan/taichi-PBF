@@ -27,6 +27,8 @@ while gui.running:
             backend.reset()
         elif e.key == 'e':
             frontend.display_fluid = not frontend.display_fluid
+        elif e.key == 'g':
+            frontend.display_gas   = not frontend.display_gas
         elif e.key == 't':
             backend.paused = False
             backend.step()
@@ -37,6 +39,8 @@ while gui.running:
         if not (backend.tick() % 5):
             backend.emit_smoke()
 
+    # reset control
+    frontend.attract = 0
     if gui.is_pressed(ti.GUI.RMB):
         frontend.mouse_pos = gui.get_cursor_pos()
         frontend.attract = 1

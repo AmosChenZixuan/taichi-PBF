@@ -52,8 +52,8 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[FLUID]
-        for i in range(0):
-            for j in range(0):
+        for i in range(10):
+            for j in range(10):
                 x = 220 + j * 0.5 * self.grid_size
                 y = 15 + i * 0.5 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)

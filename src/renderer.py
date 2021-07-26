@@ -9,6 +9,7 @@ class Renderer:
         self.mouse_pos = vec2()
         self.attract = 0
         self.display_fluid = True
+        self.display_gas   = True
         # GUI
         self.window        = 600,600
         self.bg_color      = 0xf0f0f0
@@ -32,6 +33,8 @@ class Renderer:
         ph = mem.phase.to_numpy()[:size]
         if not self.display_fluid:
             active *= ph != FLUID
+        if not self.display_gas:
+            active *= ph != GAS
         pos = mem.curPos.to_numpy()[:size][active]
         pos /= self.window
         self.gui.circles(pos=pos,
