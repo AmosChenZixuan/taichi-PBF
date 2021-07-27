@@ -10,12 +10,14 @@ class gasSolver(fluidSolver):
     def __init__(self, memory: DevMemory, grid:SpatialHasher, h):
         super().__init__(memory, grid, h)
         # vorticirty & vicosity
-        self.vort_eps = 400
-        self.visc_c   = 50
+        self.vort_eps = 50
+        self.visc_c   = 0.01
         # surface tension
         self.gamma    = 2e7
         # drag
         self.drag_k   = 0.001
+        # turbulence
+        self.baroclinity = 0.1
 
 
     ##
@@ -27,7 +29,7 @@ class gasSolver(fluidSolver):
         self.xsphViscosity()         # artificial damping
         self.applySurfaceTension()   
         self.drag_force()
-        #self.baroclinic_turbulence()
+        self.baroclinic_turbulence()
 
 
     @ti.kernel
@@ -42,6 +44,27 @@ class gasSolver(fluidSolver):
             if not mem.lifetime[x1]: continue
             fdrag = -self.drag_k * (mem.velocity[x1] - 0) * (1 - mem.density[x1] / self.restDensity / mem.mass[x1] )
             mem.force[x1] += fdrag
-            
+
+    @ti.kernel
+    def baroclinic_turbulence(self):
+        mem  = self.mem
+        grid = self.grid
+        for xi in range(self.size()):
+            x1 = self.ptr[xi]
+            if not mem.lifetime[x1]: continue
+            # angular velocity
+            omega = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                vel_diff = mem.velocity[x2] - mem.velocity[x1]
+                r        = mem.curPos[x1] - mem.curPos[x2]
+                grad     = self.wSpikyG(r)
+                omega   += vel_diff.cross(grad)
+            fvort = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                r      = mem.curPos[x1] - mem.curPos[x2]
+                fvort += omega.cross(r) * self.wPoly6(r.norm_sqr())
+            mem.force[x1] += fvort*100000
 
         
