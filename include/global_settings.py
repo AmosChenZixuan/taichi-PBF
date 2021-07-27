@@ -8,6 +8,9 @@ DEBUG_MODE = False
 DRAW_GRID = True
 DRAW_NEIGHBOR = False
 
+# control
+AUTO_EMIT = True
+
 # max number of particles allowed
 # TODO: make it dynamic 
 MEM_CAPACITY = 2**13

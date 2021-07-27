@@ -15,7 +15,7 @@ class Simulation:
         self.solver_iters       = 5
         self.dt                 = 1 / 60 / self.substeps
         self.gravity            = vec2(y=-980.)
-        self.alpha              = -0.5         # gravity refactor for gas
+        self.alpha              = -0.08         # gravity refactor for gas
         self.collision_eps      = 5
         self.bbox               = 0,100,0,100
         # Memory
@@ -51,12 +51,12 @@ class Simulation:
         for s in self.solvers:
             s.clear()
         # add water
-        solver = self.solvers[GAS]
-        for i in range(0):
-            for j in range(0):
+        solver = self.solvers[FLUID]
+        for i in range(10):
+            for j in range(10):
                 x = 160 + j * 0.4 * self.grid_size
-                y = 130 + i * 0.4 * self.grid_size
-                p = Particle(mem.getNextId(), [x,y], mass=1., phase=GAS)
+                y = 330 + i * 0.4 * self.grid_size
+                p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
                 mem.add(p)
                 solver.add(p)
 
@@ -71,7 +71,8 @@ class Simulation:
             for j in range(gas_col):
                 x = 290 + j * 15
                 y = 20 + i * 15
-                p = Particle(self.mem.getNextId(), [x,y], mass=0.9, lifetime=life, phase=GAS)
+                v = vec2(0, 500 - 380 * (abs(1-j)))
+                p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=0.9, lifetime=life, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
         # smoke
@@ -95,7 +96,7 @@ class Simulation:
                 g *= self.alpha
             if DEBUG_MODE and mem.force[i].norm() > 0:
                 print(mem.force[i])
-            mem.velocity[i] += self.dt * (g + mem.force[i])
+            mem.velocity[i] += self.dt * g + mem.force[i]
             # reset acceleration
             mem.force[i] = 0,0
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
@@ -225,7 +226,7 @@ class Simulation:
                 self.project()
             # update v and pos
             self.update()
-            # additional fources
+            # additional forces
             self.vorticity_confinement()  # artificial curl force
             self.xsphViscosity()          # artificial damping
             self.applySurfaceTension()    #   

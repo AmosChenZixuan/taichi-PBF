@@ -24,7 +24,7 @@ class fluidSolver:
         self.s_corr_n    = 4
         self.s_corr_const= 1 / (self.poly6_const * (self.kernel2 - deltaQ**2) ** 3) # wploy6(deltaQ)
         # Surface Tension
-        self.gamma       = 2e9
+        self.gamma       = 2e7
         self.cohes_const = 32 / np.pi / self.kernel_size**9
         
         
@@ -102,23 +102,27 @@ class fluidSolver:
 
     @ti.kernel
     def applySurfaceTension(self):
+        '''
+            F_cohesion = -gamma * massi * massj * C(|Xij|) * (Xij/|Xij|)
+            F_surfaceTension = 2 * rho_0 / (rh_oi + rho_j) * (F_cohesion + F_curvature)
+        '''
         mem = self.mem
         grid = self.grid
         for i in range(self.size()):
             x1 = self.ptr[i]
             if not mem.lifetime[x1]: continue
-            force     = vec2()
-            curvature = vec2()
+            force = vec2()
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]
                 r  = mem.newPos[x1] - mem.newPos[x2]
                 rn = r.norm()
                 # Cohesion
-                d       = 2 * self.restDensity * mem.mass[x1] / (mem.density[x1] + mem.density[x2])
-                C       = self.wCohesion(rn)
                 if rn > 0:
+                    d       = 2 * self.restDensity * mem.mass[x1] / (mem.density[x1] + mem.density[x2])
+                    C       = self.wCohesion(rn)
                     f_cohes = -self.gamma / mem.mass[x1] / mem.mass[x2] * C * r.normalized()
                     force  += d * f_cohes 
+                # TODO Curvature
             mem.force[x1] += force
 
 

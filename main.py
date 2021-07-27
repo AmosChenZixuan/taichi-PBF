@@ -35,8 +35,8 @@ while gui.running:
             backend.paused = True
         elif e.key == gui.SPACE:
             backend.emit_smoke()
-    if False:
-        if not (backend.tick() % 5):
+    if AUTO_EMIT:
+        if not (backend.tick() % 3) and not backend.paused:
             backend.emit_smoke()
 
     # reset control
