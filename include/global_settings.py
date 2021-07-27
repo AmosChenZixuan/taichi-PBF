@@ -9,7 +9,7 @@ DRAW_GRID = True
 DRAW_NEIGHBOR = False
 
 # control
-AUTO_EMIT = True
+AUTO_EMIT = False
 
 # max number of particles allowed
 # TODO: make it dynamic 

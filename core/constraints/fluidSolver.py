@@ -23,8 +23,11 @@ class fluidSolver:
         self.s_corr_k    = 0.1                  # s_corr = k*(w_ij/wDeltaQ)**n
         self.s_corr_n    = 4
         self.s_corr_const= 1 / (self.poly6_const * (self.kernel2 - deltaQ**2) ** 3) # wploy6(deltaQ)
+        # vorticirty & vicosity
+        self.vort_eps    = 200
+        self.visc_c      = 0.01
         # Surface Tension
-        self.gamma       = 2e7
+        self.gamma       = 2e6
         self.cohes_const = 32 / np.pi / self.kernel_size**9
         
         
@@ -100,6 +103,64 @@ class fluidSolver:
             if not mem.lifetime[x1]: continue
             mem.newPos[x1] += mem.deltaX[x1] / self.restDensity / mem.mass[x1]
 
+    ##
+    ## External Forces
+    ##
+
+    def external_forces(self):
+        self.vorticity_confinement() # artificial curl force
+        self.xsphViscosity()         # artificial damping
+        self.applySurfaceTension()   
+
+    @ti.kernel
+    def vorticity_confinement(self):
+        '''
+            fvort = eps * (N x omega)
+        '''
+        mem  = self.mem
+        grid = self.grid
+        for xi in range(self.size()):
+            x1 = self.ptr[xi]
+            if not mem.lifetime[x1]: continue
+            # angular velocity
+            omega = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                vel_diff = mem.velocity[x2] - mem.velocity[x1]
+                r        = mem.curPos[x1] - mem.curPos[x2]
+                grad     = self.wSpikyG(r)
+                omega   += vel_diff.cross(grad)
+            # direction of corrective force
+            eta = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2   = grid.neighbors[x1, i]
+                r    = mem.curPos[x1] - mem.curPos[x2]
+                grad = self.wSpikyG(r)
+                eta += grad * omega.norm()
+            # update if there is an eta direction
+            if eta.norm() > 0:
+                n = eta.normalized()
+                mem.velocity[x1] += n.cross(omega) * self.vort_eps
+
+    @ti.kernel
+    def xsphViscosity(self):
+        '''
+            v_new = v + c * SUM_J{ Vij * poly(Pij) }
+        '''
+        mem  = self.mem
+        grid = self.grid
+        for xi in range(self.size()):
+            x1 = self.ptr[xi]
+            if not mem.lifetime[x1]: continue
+            visc = vec2()
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                vel_diff = mem.velocity[x2] - mem.velocity[x1]
+                r        = mem.curPos[x1] - mem.curPos[x2]
+                vel_diff *= self.wPoly6(r.norm_sqr())
+                visc     += vel_diff
+            mem.velocity[x1] += visc * self.visc_c
+
     @ti.kernel
     def applySurfaceTension(self):
         '''
@@ -114,6 +175,7 @@ class fluidSolver:
             force = vec2()
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]
+                if mem.phase[x1] != mem.phase[x2]:continue  # need to be same type of particle
                 r  = mem.newPos[x1] - mem.newPos[x2]
                 rn = r.norm()
                 # Cohesion

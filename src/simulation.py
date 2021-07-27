@@ -52,10 +52,10 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[FLUID]
-        for i in range(10):
-            for j in range(10):
+        for i in range(30):
+            for j in range(30):
                 x = 160 + j * 0.4 * self.grid_size
-                y = 330 + i * 0.4 * self.grid_size
+                y = 30 + i * 0.4 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
                 mem.add(p)
                 solver.add(p)
@@ -158,58 +158,11 @@ class Simulation:
                 mem.curPos[x1] += vsum / wsum * self.dt
                 mem.newPos[x1] = mem.curPos[x1]
 
-    @ti.kernel
-    def vorticity_confinement(self):
-        '''
-            fvort = eps * (N x omega)
-        '''
-        mem  = self.mem
-        grid = self.grid
-        for x1 in range(mem.size()):
-            if not mem.lifetime[x1]: continue
-            if not mem.phase[x1] == GAS: continue  # only applied to gas
-            # angular velocity
-            omega = vec2()
-            for i in range(grid.n_neighbors[x1]):
-                x2 = grid.neighbors[x1, i]
-                vel_diff = mem.velocity[x2] - mem.velocity[x1]
-                r        = mem.curPos[x1] - mem.curPos[x2]
-                grad     = self.solvers[GAS].wSpikyG(r)
-                omega   += vel_diff.cross(grad)
-            # direction of corrective force
-            eta = vec2()
-            for i in range(grid.n_neighbors[x1]):
-                x2   = grid.neighbors[x1, i]
-                r    = mem.curPos[x1] - mem.curPos[x2]
-                grad = self.solvers[GAS].wSpikyG(r)
-                eta += grad * omega.norm()
-            # update if there is an eta direction
-            if eta.norm() > 0:
-                n = eta.normalized()
-                mem.velocity[x1] += n.cross(omega) * 400
-
-    @ti.kernel
-    def xsphViscosity(self):
-        '''
-            v_new = v + c * SUM_J{ Vij * poly(Pij) }
-        '''
-        mem  = self.mem
-        grid = self.grid
-        for x1 in range(mem.size()):
-            if not mem.lifetime[x1]: continue
-            if not mem.phase[x1] == GAS: continue  # only applied to gas
-            visc = vec2()
-            for i in range(grid.n_neighbors[x1]):
-                x2 = grid.neighbors[x1, i]
-                vel_diff = mem.velocity[x2] - mem.velocity[x1]
-                r        = mem.curPos[x1] - mem.curPos[x2]
-                vel_diff *= self.solvers[GAS].wPoly6(r.norm_sqr())
-                visc     += vel_diff
-            mem.velocity[x1] += visc * 50
-
-    def applySurfaceTension(self):
-        self.solvers[FLUID].applySurfaceTension()
-        self.solvers[GAS].applySurfaceTension()
+    def external_forces(self):
+        fs = self.solvers[FLUID]
+        gs = self.solvers[GAS]
+        fs.external_forces()
+        gs.external_forces()
 
     def step(self):
         if self.paused:
@@ -227,6 +180,4 @@ class Simulation:
             # update v and pos
             self.update()
             # additional forces
-            self.vorticity_confinement()  # artificial curl force
-            self.xsphViscosity()          # artificial damping
-            self.applySurfaceTension()    #   
+            self.external_forces()
