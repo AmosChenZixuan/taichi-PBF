@@ -41,6 +41,12 @@ class Renderer:
                 radius=4,
                 color=PALETTE[ph[active]]
         )
+        if DRAW_VEL_FIELD:
+            vels = mem.velocity.to_numpy()[:size][active]
+            vels /= self.window
+            vels /= 10
+            self.gui.lines(pos, pos+vels, color=0x00ff00, radius=1)
+
 
     def draw_grid(self, grid):
         if not DRAW_GRID:
@@ -73,5 +79,3 @@ class Renderer:
             #print(len(id), sorted(id))
             self.gui.circle(mem.curPos[x1].value / self.window, radius=3, color=0xff0000)
             self.gui.circles(np.array(pos), radius=3, color=0x00ff00)
-
-    

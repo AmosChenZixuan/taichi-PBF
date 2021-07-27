@@ -7,6 +7,7 @@ ARCH = ti.gpu
 DEBUG_MODE = False
 DRAW_GRID = True
 DRAW_NEIGHBOR = False
+DRAW_VEL_FIELD = True
 
 # control
 AUTO_EMIT = False
