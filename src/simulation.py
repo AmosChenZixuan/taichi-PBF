@@ -15,7 +15,7 @@ class Simulation:
         self.solver_iters       = 5
         self.dt                 = 1 / 60 / self.substeps
         self.gravity            = vec2(y=-980.)
-        self.alpha              = -0.05         # gravity refactor for gas
+        self.alpha              = -0.5         # gravity refactor for gas
         self.collision_eps      = 5
         self.bbox               = 0,100,0,100
         # Memory
@@ -52,8 +52,8 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[GAS]
-        for i in range(30):
-            for j in range(30):
+        for i in range(0):
+            for j in range(0):
                 x = 160 + j * 0.4 * self.grid_size
                 y = 130 + i * 0.4 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=GAS)
@@ -64,14 +64,14 @@ class Simulation:
     def emit_smoke(self):
         gas_row, gas_col = 2, 3
         smk_row, smk_col = 2, 1
-        life = 30000
+        life = -1
         # gas
         solver = self.solvers[GAS]
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 15
                 y = 20 + i * 15
-                p = Particle(self.mem.getNextId(), [x,y], mass=1.5, lifetime=life, phase=GAS)
+                p = Particle(self.mem.getNextId(), [x,y], mass=0.9, lifetime=life, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
         # smoke
@@ -185,7 +185,7 @@ class Simulation:
             # update if there is an eta direction
             if eta.norm() > 0:
                 n = eta.normalized()
-                mem.velocity[x1] += n.cross(omega) * 1400
+                mem.velocity[x1] += n.cross(omega) * 2400
 
     @ti.kernel
     def xsphViscosity(self):

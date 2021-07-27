@@ -24,7 +24,7 @@ class fluidSolver:
         self.s_corr_n    = 4
         self.s_corr_const= 1 / (self.poly6_const * (self.kernel2 - deltaQ**2) ** 3) # wploy6(deltaQ)
         # Surface Tension
-        self.gamma       = 614000000
+        self.gamma       = 1e9
         self.cohes_const = 32 / np.pi / self.kernel_size**9
         
         
@@ -119,7 +119,7 @@ class fluidSolver:
                 d       = 2 * self.restDensity * mem.mass[x1] / (mem.density[x1] + mem.density[x2])
                 C       = self.wCohesion(rn)
                 if rn > 0:
-                    f_cohes = -self.gamma * mem.mass[x1] * mem.mass[x2] * C * r.normalized()
+                    f_cohes = -self.gamma / mem.mass[x1] / mem.mass[x2] * C * r.normalized()
                     force  += d * f_cohes 
             mem.force[x1] += force
 
