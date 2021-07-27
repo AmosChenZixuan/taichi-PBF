@@ -185,7 +185,7 @@ class Simulation:
             # update if there is an eta direction
             if eta.norm() > 0:
                 n = eta.normalized()
-                mem.velocity[x1] += n.cross(omega) * 800
+                mem.velocity[x1] += n.cross(omega) * 1400
 
     @ti.kernel
     def xsphViscosity(self):
@@ -204,7 +204,7 @@ class Simulation:
                 r        = mem.curPos[x1] - mem.curPos[x2]
                 vel_diff *= self.solvers[GAS].wPoly6(r.norm_sqr())
                 visc     += vel_diff
-            mem.velocity[x1] += visc * 200
+            mem.velocity[x1] += visc * 600
 
     def applySurfaceTension(self):
         self.solvers[FLUID].applySurfaceTension()

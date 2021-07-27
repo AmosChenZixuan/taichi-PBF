@@ -24,7 +24,7 @@ class fluidSolver:
         self.s_corr_n    = 4
         self.s_corr_const= 1 / (self.poly6_const * (self.kernel2 - deltaQ**2) ** 3) # wploy6(deltaQ)
         # Surface Tension
-        self.gamma       = 0.005
+        self.gamma       = 614000000
         self.cohes_const = 32 / np.pi / self.kernel_size**9
         
         
@@ -114,12 +114,13 @@ class fluidSolver:
                 if not mem.lifetime[x2]: continue
                 if x1 == x2: continue
                 r  = mem.newPos[x1] - mem.newPos[x2]
+                rn = r.norm()
                 # Cohesion
                 d       = 2 * self.restDensity * mem.mass[x1] / (mem.density[x1] + mem.density[x2])
-                C       = self.wCohesion(r.norm())
-                f_cohes = self.gamma * mem.mass[x1] * mem.mass[x2] * C * r.normalized()
-                # Curvature
-                force  += d * f_cohes 
+                C       = self.wCohesion(rn)
+                if rn > 0:
+                    f_cohes = -self.gamma * mem.mass[x1] * mem.mass[x2] * C * r.normalized()
+                    force  += d * f_cohes 
             mem.force[x1] += force
 
 
@@ -159,5 +160,5 @@ class fluidSolver:
         if 2*r_norm > self.kernel_size and r_norm <= self.kernel_size:
             ret_val = self.cohes_const * (self.kernel_size - r_norm)**3 * r_norm**3
         elif r_norm > 0 and 2*r_norm <= self.kernel_size:
-            ret_val = self.cohes_const * 2 * (self.kernel_size - r_norm)**3 * r_norm**3 - (self.kernel_size**6 / 64)
+            ret_val = self.cohes_const * (2 * (self.kernel_size - r_norm)**3 * r_norm**3 - (self.kernel_size**6 / 64))
         return ret_val
