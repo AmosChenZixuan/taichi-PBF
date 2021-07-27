@@ -15,7 +15,7 @@ class Simulation:
         self.solver_iters       = 5
         self.dt                 = 1 / 60 / self.substeps
         self.gravity            = vec2(y=-980.)
-        self.alpha              = -0.08         # gravity refactor for gas
+        self.alpha              = -0.02         # gravity refactor for gas
         self.collision_eps      = 5
         self.bbox               = 0,100,0,100
         # Memory
@@ -52,8 +52,8 @@ class Simulation:
             s.clear()
         # add water
         solver = self.solvers[FLUID]
-        for i in range(30):
-            for j in range(30):
+        for i in range(0):
+            for j in range(0):
                 x = 160 + j * 0.4 * self.grid_size
                 y = 30 + i * 0.4 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
@@ -69,17 +69,17 @@ class Simulation:
         solver = self.solvers[GAS]
         for i in range(gas_row):
             for j in range(gas_col):
-                x = 290 + j * 15
-                y = 20 + i * 15
-                v = vec2(0, 500 - 380 * (abs(1-j)))
+                x = 290 + j * 10
+                y = 20 + i * 10
+                v = vec2(0, 100 - 40 * (abs(1-j)))
                 p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=0.9, lifetime=life, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
         # smoke
         for i in range(smk_row):
             for j in range(smk_col):
-                x = 305 + j * 15
-                y = 26.5 + i * 2
+                x = 300 + j * 10
+                y = 22.5 + i * 5
                 p = Particle(self.mem.getNextId(), [x,y], lifetime=life, phase=SMOKE)
                 self.mem.add(p)
 
