@@ -29,6 +29,7 @@ class fluidSolver:
         # Surface Tension
         self.gamma       = 2e6
         self.cohes_const = 32 / np.pi / self.kernel_size**9
+        self.curv_scale  = 0.0001
         
         
     def solve(self):
@@ -110,6 +111,7 @@ class fluidSolver:
     def external_forces(self):
         self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
+        self.calcNormals()           # prepare for calculating curvature
         self.applySurfaceTension()   
 
     @ti.kernel
@@ -162,6 +164,22 @@ class fluidSolver:
             mem.velocity[x1] += visc * self.visc_c
 
     @ti.kernel
+    def calcNormals(self):
+        mem = self.mem
+        grid = self.grid
+        for i in range(self.size()):
+            x1 = self.ptr[i]
+            if not mem.lifetime[x1]: continue
+            norm = vec2()
+            for j in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, j]
+                if mem.phase[x1] != mem.phase[x2]:continue  # need to be same type of particle
+                r     = mem.newPos[x1] - mem.newPos[x2]
+                norm += mem.mass[x2] / mem.density[x2] * self.wSpikyG(r)
+            mem.normals[x1] = norm * self.curv_scale
+
+
+    @ti.kernel
     def applySurfaceTension(self):
         '''
             F_cohesion = -gamma * massi * massj * C(|Xij|) * (Xij/|Xij|)
@@ -178,13 +196,13 @@ class fluidSolver:
                 if mem.phase[x1] != mem.phase[x2]:continue  # need to be same type of particle
                 r  = mem.newPos[x1] - mem.newPos[x2]
                 rn = r.norm()
-                # Cohesion
+                # Cohesion and Curvature
                 if rn > 0:
                     d       = 2 * self.restDensity * mem.mass[x1] / (mem.density[x1] + mem.density[x2])
                     C       = self.wCohesion(rn)
-                    f_cohes = -self.gamma / mem.mass[x1] / mem.mass[x2] * C * r.normalized()
-                    force  += d * f_cohes 
-                # TODO Curvature
+                    f_cohes = -self.gamma * mem.mass[x1] * mem.mass[x2] * C * r.normalized()
+                    curv    = -self.gamma * mem.mass[x1] * (mem.normals[x1] - mem.normals[x2])
+                    force  += d * (f_cohes + curv) 
             mem.force[x1] += force
 
 

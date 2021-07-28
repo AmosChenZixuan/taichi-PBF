@@ -19,6 +19,7 @@ class DevMemory:
         self.lambdas = new_field(capacity, 1)  # constraint
         self.deltaX  = new_field(capacity)     # position change
         self.density = new_field(capacity, 1)
+        self.normals = new_field(capacity)     # norm vector
     
         
     def clear(self):

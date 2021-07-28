@@ -10,7 +10,7 @@ class gasSolver(fluidSolver):
     def __init__(self, memory: DevMemory, grid:SpatialHasher, h):
         super().__init__(memory, grid, h)
         # vorticirty & vicosity
-        self.vort_eps = 50
+        self.vort_eps = 0.1
         self.visc_c   = 0.01
         # surface tension
         self.gamma    = 2e7
@@ -25,8 +25,9 @@ class gasSolver(fluidSolver):
     ##
 
     def external_forces(self):
-        #self.vorticity_confinement() # artificial curl force
+        self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
+        self.calcNormals()           # prepare for calculating curvature
         self.applySurfaceTension()   
         self.drag_force()
         self.baroclinic_turbulence()
