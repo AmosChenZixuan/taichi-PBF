@@ -15,7 +15,7 @@ class Simulation:
         self.solver_iters       = 5
         self.dt                 = 1 / 60 / self.substeps
         self.gravity            = vec2(y=-980.)
-        self.alpha              = -0.005         # gravity refactor for gas
+        self.alpha              = 0.005         # gravity refactor for gas
         self.collision_eps      = 5
         self.bbox               = 0,100,0,100
         # Memory
@@ -72,7 +72,7 @@ class Simulation:
             for j in range(gas_col):
                 x = 290 + j * 10
                 y = 10 + i * 10
-                v = vec2(0, 100 - 40 * (abs(1-j)))
+                v = vec2(0, 200 - 180 * (abs(1-j)))
                 p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=0.9, lifetime=life, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
@@ -158,6 +158,9 @@ class Simulation:
             if wsum > 0:
                 mem.curPos[x1] += vsum / wsum * self.dt
                 mem.newPos[x1] = mem.curPos[x1]
+            else:
+                # remove smoke particles with no fluid neighbor
+                mem.lifetime[x1] = 0
 
     def external_forces(self):
         fs = self.solvers[FLUID]

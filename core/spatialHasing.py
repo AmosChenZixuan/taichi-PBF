@@ -19,7 +19,7 @@ class SpatialHasher:
         self.grid_max      = grid_max
         self.neighbors_max = neighbor_max
         # fields
-        self.grid       = new_field((*grid_shape, grid_max), 1, INDEX_TYPE)  # grid representation of positions
+        self.grid       = new_field((*grid_shape, grid_max), 1, INDEX_TYPE)  # grid representation of positions TODO: change to hashgrid
         self.n_in_grid  = new_field(grid_shape, 1, COUNTER_TYPE)             # number of particle in grid cell
         self.neighbors  = new_field((capacity, neighbor_max), 1, INDEX_TYPE) # neighbor search table
         self.n_neighbors= new_field(capacity, 1, COUNTER_TYPE)               # number of neighbors for each particle

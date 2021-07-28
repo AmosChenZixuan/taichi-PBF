@@ -14,7 +14,7 @@ AUTO_EMIT = True
 
 # max number of particles allowed
 # TODO: make it dynamic 
-MEM_CAPACITY = 2**14
+MEM_CAPACITY = 2**15
 
 # Types 
 PHASE_TYPE   = ti.i8
