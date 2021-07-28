@@ -7,14 +7,14 @@ ARCH = ti.gpu
 DEBUG_MODE = False
 DRAW_GRID = True
 DRAW_NEIGHBOR = False
-DRAW_VEL_FIELD = True
+DRAW_VEL_FIELD = False
 
 # control
-AUTO_EMIT = False
+AUTO_EMIT = True
 
 # max number of particles allowed
 # TODO: make it dynamic 
-MEM_CAPACITY = 2**13
+MEM_CAPACITY = 2**14
 
 # Types 
 PHASE_TYPE   = ti.i8

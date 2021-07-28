@@ -15,7 +15,7 @@ class Simulation:
         self.solver_iters       = 5
         self.dt                 = 1 / 60 / self.substeps
         self.gravity            = vec2(y=-980.)
-        self.alpha              = -0.02         # gravity refactor for gas
+        self.alpha              = -0.005         # gravity refactor for gas
         self.collision_eps      = 5
         self.bbox               = 0,100,0,100
         # Memory
@@ -46,6 +46,7 @@ class Simulation:
 
     def reset(self):
         # reinitialize
+        self._ticks = 0
         mem = self.mem
         mem.clear()
         for s in self.solvers:
@@ -54,23 +55,23 @@ class Simulation:
         solver = self.solvers[FLUID]
         for i in range(0):
             for j in range(0):
-                x = 160 + j * 0.4 * self.grid_size
-                y = 30 + i * 0.4 * self.grid_size
+                x = 10 + j * 0.4 * self.grid_size
+                y = 5 + i * 0.4 * self.grid_size
                 p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
                 mem.add(p)
                 solver.add(p)
 
 
     def emit_smoke(self):
-        gas_row, gas_col = 2, 3
-        smk_row, smk_col = 2, 1
-        life = -1
+        gas_row, gas_col = 3, 3
+        smk_row, smk_col = 6, 3
+        life = 1000
         # gas
         solver = self.solvers[GAS]
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 10
-                y = 20 + i * 10
+                y = 10 + i * 10
                 v = vec2(0, 100 - 40 * (abs(1-j)))
                 p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=0.9, lifetime=life, phase=GAS)
                 self.mem.add(p)
@@ -78,8 +79,8 @@ class Simulation:
         # smoke
         for i in range(smk_row):
             for j in range(smk_col):
-                x = 300 + j * 10
-                y = 22.5 + i * 5
+                x = 298 + j * 2
+                y = 12.5 + i * 3
                 p = Particle(self.mem.getNextId(), [x,y], lifetime=life, phase=SMOKE)
                 self.mem.add(p)
 

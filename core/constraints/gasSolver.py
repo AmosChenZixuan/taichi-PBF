@@ -66,6 +66,6 @@ class gasSolver(fluidSolver):
                 x2 = grid.neighbors[x1, i]
                 r      = mem.curPos[x1] - mem.curPos[x2]
                 fvort += omega.cross(r) * self.wPoly6(r.norm_sqr())
-            mem.force[x1] += fvort*100000
+            mem.force[x1] += fvort*10000
 
         
