@@ -16,6 +16,8 @@ class DevMemory:
         self.phase      = new_field(capacity, 1, PHASE_TYPE)
         self.lifetime   = new_field(capacity, 1, COUNTER_TYPE)  # [-1]not applicable; [0]dead; [>0]alive
         # Computational Cache
+        self.polyBuf = new_field((capacity, NEIGHBOR_CAPACITY), 1)  # Poly6 
+        self.spkyBuf = new_field((capacity, NEIGHBOR_CAPACITY))     # Spiky Gradient
         self.lambdas = new_field(capacity, 1)  # constraint
         self.deltaX  = new_field(capacity)     # position change
         self.density = new_field(capacity, 1)

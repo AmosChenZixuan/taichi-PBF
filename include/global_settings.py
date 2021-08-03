@@ -16,6 +16,10 @@ AUTO_EMIT = True
 # TODO: make it dynamic 
 MEM_CAPACITY = 2**15
 
+# max number of particles in each cell
+NEIGHBOR_CAPACITY = 64
+GRID_CAPACITY     = 64
+
 # Types 
 PHASE_TYPE   = ti.i8
 INDEX_TYPE   = ti.i32

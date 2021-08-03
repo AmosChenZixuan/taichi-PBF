@@ -25,6 +25,7 @@ class gasSolver(fluidSolver):
     ##
 
     def external_forces(self):
+        self.update_cache()
         self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
         self.calcNormals()           # prepare for calculating curvature
@@ -59,13 +60,13 @@ class gasSolver(fluidSolver):
                 x2 = grid.neighbors[x1, i]
                 vel_diff = mem.velocity[x2] - mem.velocity[x1]
                 r        = mem.curPos[x1] - mem.curPos[x2]
-                grad     = self.wSpikyG(r)
+                grad     = mem.spkyBuf[x1,i]
                 omega   += vel_diff.cross(grad)
             fvort = vec2()
             for i in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, i]
                 r      = mem.curPos[x1] - mem.curPos[x2]
-                fvort += omega.cross(r) * self.wPoly6(r.norm_sqr())
+                fvort += omega.cross(r) * mem.polyBuf[x1,i]
             mem.force[x1] += fvort
 
         

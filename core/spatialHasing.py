@@ -7,8 +7,6 @@ class SpatialHasher:
     def initialize(self, memory: DevMemory,
             grid_size,
             grid_shape,
-            grid_max     = 64,
-            neighbor_max = 64,
             capacity = MEM_CAPACITY):
         # reference
         self.mem = memory
@@ -16,12 +14,12 @@ class SpatialHasher:
         self.grid_size     = grid_size
         self.grid2         = grid_size**2
         self.grid_shape    = grid_shape
-        self.grid_max      = grid_max
-        self.neighbors_max = neighbor_max
+        self.grid_max      = GRID_CAPACITY
+        self.neighbors_max = NEIGHBOR_CAPACITY
         # fields
-        self.grid       = new_field((*grid_shape, grid_max), 1, INDEX_TYPE)  # grid representation of positions TODO: change to hashgrid
+        self.grid       = new_field((*grid_shape, GRID_CAPACITY), 1, INDEX_TYPE)  # grid representation of positions TODO: change to hashgrid
         self.n_in_grid  = new_field(grid_shape, 1, COUNTER_TYPE)             # number of particle in grid cell
-        self.neighbors  = new_field((capacity, neighbor_max), 1, INDEX_TYPE) # neighbor search table
+        self.neighbors  = new_field((capacity, NEIGHBOR_CAPACITY), 1, INDEX_TYPE) # neighbor search table
         self.n_neighbors= new_field(capacity, 1, COUNTER_TYPE)               # number of neighbors for each particle
         
     def step(self):

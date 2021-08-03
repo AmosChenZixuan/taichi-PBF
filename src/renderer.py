@@ -11,7 +11,7 @@ class Renderer:
         self.display_fluid = True
         self.display_gas   = True
         # GUI
-        self.window        = 600,600
+        self.window        = 600,1000
         self.bg_color      = 0xf0f0f0
         self.gui = ti.GUI(title,
                 res=self.window, 

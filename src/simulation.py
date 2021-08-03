@@ -42,7 +42,7 @@ class Simulation:
         w,h = renderer.window
         grid_shape = (w // self.grid_size + 1, 
                         h // self.grid_size + 1)
-        self.grid.initialize(self.mem, self.grid_size, grid_shape, 64, 64)
+        self.grid.initialize(self.mem, self.grid_size, grid_shape)
 
     def reset(self):
         # reinitialize
@@ -65,7 +65,7 @@ class Simulation:
     def emit_smoke(self):
         gas_row, gas_col = 3, 3
         smk_row, smk_col = 6, 3
-        life = 1000
+        life = 1500
         # gas
         solver = self.solvers[GAS]
         for i in range(gas_row):

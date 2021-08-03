@@ -33,9 +33,23 @@ class fluidSolver:
         
         
     def solve(self):
+        self.update_cache()
         self.calc_lambda()
         self.calc_delta()
         self.project()
+
+    @ti.kernel
+    def update_cache(self):
+        mem  = self.mem
+        grid = self.grid
+        for i in range(self.size()):
+            x1 = self.ptr[i]
+            if not mem.lifetime[x1]: continue
+            for j in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, j]
+                r  = mem.newPos[x1] - mem.newPos[x2]
+                mem.polyBuf[x1,j] = self.wPoly6(r.norm_sqr())
+                mem.spkyBuf[x1,j] = self.wSpikyG(r)
 
     @ti.kernel
     def calc_lambda(self):
@@ -61,12 +75,10 @@ class fluidSolver:
             sum_Ci             = vec2()
             sum_grad_pk_Ci_sqr = 0.
             for j in range(grid.n_neighbors[x1]):
-                x2 = grid.neighbors[x1, j]
-                r    = mem.newPos[x1] - mem.newPos[x2]
-                grad = self.wSpikyG(r) / self.restDensity / mem.mass[x1]
+                grad = mem.spkyBuf[x1,j] / self.restDensity / mem.mass[x1]
                 sum_Ci             += grad
                 sum_grad_pk_Ci_sqr += grad.norm_sqr()
-                rho_i              += self.wPoly6(r.norm_sqr())
+                rho_i              += mem.polyBuf[x1,j]
             C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
             sum_grad_pk_Ci_sqr += sum_Ci.norm_sqr()
             mem.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)
@@ -92,8 +104,8 @@ class fluidSolver:
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]
                 r      = mem.newPos[x1] - mem.newPos[x2]
-                s_corr = -self.s_corr_k * (self.wPoly6(r.norm_sqr()) * self.s_corr_const) ** self.s_corr_n
-                delta += (mem.lambdas[x1] + mem.lambdas[x2] + s_corr) * self.wSpikyG(r)
+                s_corr = -self.s_corr_k * (mem.polyBuf[x1,j] * self.s_corr_const) ** self.s_corr_n
+                delta += (mem.lambdas[x1] + mem.lambdas[x2] + s_corr) * mem.spkyBuf[x1,j]
             mem.deltaX[x1] = delta
 
     @ti.kernel
@@ -109,6 +121,7 @@ class fluidSolver:
     ##
 
     def external_forces(self):
+        self.update_cache()
         self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
         self.calcNormals()           # prepare for calculating curvature
@@ -129,15 +142,13 @@ class fluidSolver:
             for i in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, i]
                 vel_diff = mem.velocity[x2] - mem.velocity[x1]
-                r        = mem.curPos[x1] - mem.curPos[x2]
-                grad     = self.wSpikyG(r)
+                grad     = mem.spkyBuf[x1,i]
                 omega   += vel_diff.cross(grad)
             # direction of corrective force
             eta = vec2()
             for i in range(grid.n_neighbors[x1]):
                 x2   = grid.neighbors[x1, i]
-                r    = mem.curPos[x1] - mem.curPos[x2]
-                grad = self.wSpikyG(r)
+                grad = mem.spkyBuf[x1,i]
                 eta += grad * omega.norm()
             # update if there is an eta direction
             if eta.norm() > 0:
@@ -158,8 +169,7 @@ class fluidSolver:
             for i in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, i]
                 vel_diff = mem.velocity[x2] - mem.velocity[x1]
-                r        = mem.curPos[x1] - mem.curPos[x2]
-                vel_diff *= self.wPoly6(r.norm_sqr())
+                vel_diff *= mem.polyBuf[x1,i]
                 visc     += vel_diff
             mem.velocity[x1] += visc * self.visc_c
 
@@ -174,8 +184,8 @@ class fluidSolver:
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]
                 if mem.phase[x1] != mem.phase[x2]:continue  # need to be same type of particle
-                r     = mem.newPos[x1] - mem.newPos[x2]
-                norm += mem.mass[x2] / mem.density[x2] * self.wSpikyG(r)
+                if mem.density[x2] > 0:
+                    norm += mem.mass[x2] / mem.density[x2] * mem.spkyBuf[x1,j]
             mem.normals[x1] = norm * self.curv_scale
 
 
@@ -196,11 +206,11 @@ class fluidSolver:
                 if mem.phase[x1] != mem.phase[x2]:continue  # need to be same type of particle
                 r  = mem.newPos[x1] - mem.newPos[x2]
                 rn = r.norm()
+                d  = mem.density[x1] + mem.density[x2]
                 # Cohesion and Curvature
-                if rn > 0:
-                    d       = 2 * self.restDensity * mem.mass[x1] / (mem.density[x1] + mem.density[x2])
-                    C       = self.wCohesion(rn)
-                    f_cohes = -self.gamma * mem.mass[x1] * mem.mass[x2] * C * r.normalized()
+                if rn > 0 and d > 0:
+                    d       = 2 * self.restDensity * mem.mass[x1] / d
+                    f_cohes = -self.gamma * mem.mass[x1] * mem.mass[x2] * self.wCohesion(rn) * r.normalized()
                     curv    = -self.gamma * mem.mass[x1] * (mem.normals[x1] - mem.normals[x2])
                     force  += d * (f_cohes + curv) 
             mem.force[x1] += force
