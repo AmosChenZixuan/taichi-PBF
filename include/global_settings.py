@@ -10,7 +10,7 @@ DRAW_NEIGHBOR = False
 DRAW_VEL_FIELD = False
 
 # control
-AUTO_EMIT = True
+AUTO_EMIT = False
 
 # max number of particles allowed
 # TODO: make it dynamic 

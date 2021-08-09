@@ -49,17 +49,27 @@ class Simulation:
         self._ticks = 0
         mem = self.mem
         mem.clear()
+        self.solvers = self.solvers[:2]
         for s in self.solvers:
             s.clear()
         # add water
-        solver = self.solvers[FLUID]
-        for i in range(0):
-            for j in range(0):
-                x = 10 + j * 0.4 * self.grid_size
-                y = 5 + i * 0.4 * self.grid_size
-                p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
-                mem.add(p)
-                solver.add(p)
+        if True:
+            solver = self.solvers[FLUID]
+            for i in range(10):
+                for j in range(10):
+                    x = 10 + j * 0.4 * self.grid_size
+                    y = 5 + i * 0.4 * self.grid_size
+                    p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
+                    mem.add(p)
+                    solver.add(p)
+        # add softbody
+        if True:
+            solver = shapeMatching(self.mem)
+            self.solvers.append(solver)
+            p = Particle(mem.getNextId(), [55,50], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
+            p = Particle(mem.getNextId(), [40,40], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
+            p = Particle(mem.getNextId(), [45,30], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
+            p = Particle(mem.getNextId(), [60,40], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
 
 
     def emit_smoke(self):
@@ -135,14 +145,18 @@ class Simulation:
 
     @ti.kernel
     def update(self):
-        mem = self.mem
-        grid = self.grid
+        mem  = self.mem
         for i in range(mem.size()):
             if not mem.lifetime[i]: continue
             mem.lifetime[i] -= 1
             if mem.phase[i] == SMOKE: continue
             mem.velocity[i] = (mem.newPos[i] - mem.curPos[i]) / self.dt * 0.99
             mem.curPos[i]   = mem.newPos[i]
+
+    @ti.kernel
+    def advect_smoke(self):
+        mem  = self.mem
+        grid = self.grid
         # Advect Smoke
         for x1 in range(mem.size()):
             if not mem.lifetime[x1]: continue
@@ -183,5 +197,7 @@ class Simulation:
                 self.project()
             # update v and pos
             self.update()
+            # advect smoke
+            self.advect_smoke()
             # additional forces
             self.external_forces()
