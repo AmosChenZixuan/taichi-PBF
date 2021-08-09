@@ -10,15 +10,19 @@ import numpy as np
 FLUID = 0
 GAS   = 1
 SMOKE = 2
+RIGID = 3
+CLOTH = 4
 
 @unique
 class Phase(Enum):
     fluid = FLUID
     gas   = GAS
     smoke = SMOKE
+    rigid = RIGID
+    cloth = CLOTH
 
 # particle colors to be rendered
-PALETTE = np.array([0x328ac1, 0xff1c8a, 0x959595])
+PALETTE = np.array([0x328ac1, 0xff1c8a, 0x959595, 0x00ffff, 0xffff00])
 
 class Particle:
     ''' 
