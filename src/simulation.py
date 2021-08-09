@@ -27,7 +27,8 @@ class Simulation:
         self.grid = SpatialHasher()
         # constraints
         self.solvers = [fluidSolver(self.mem, self.grid, self.grid_size),
-                        gasSolver(self.mem, self.grid, self.grid_size)
+                        gasSolver(self.mem, self.grid, self.grid_size),
+                        shapeMatching(self.mem)
                     ]
 
     def tick(self, amount=0):
@@ -49,7 +50,6 @@ class Simulation:
         self._ticks = 0
         mem = self.mem
         mem.clear()
-        self.solvers = self.solvers[:2]
         for s in self.solvers:
             s.clear()
         # add water
@@ -64,12 +64,12 @@ class Simulation:
                     solver.add(p)
         # add softbody
         if True:
-            solver = shapeMatching(self.mem)
-            self.solvers.append(solver)
-            p = Particle(mem.getNextId(), [55,50], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
-            p = Particle(mem.getNextId(), [40,40], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
-            p = Particle(mem.getNextId(), [45,30], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
-            p = Particle(mem.getNextId(), [60,40], mass=1., phase=RIGID); mem.add(p)#; solver.add(p)
+            solver = self.solvers[2]
+            p = Particle(mem.getNextId(), [55,50], mass=1., phase=RIGID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [40,40], mass=1., phase=RIGID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [45,30], mass=1., phase=RIGID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [60,40], mass=1., phase=RIGID); mem.add(p); solver.add(p)
+            solver.updateCM(0)
 
 
     def emit_smoke(self):
