@@ -53,10 +53,10 @@ class Simulation:
         for s in self.solvers:
             s.clear()
         # add water
-        if True:
+        if False:
             solver = self.solvers[FLUID]
-            for i in range(10):
-                for j in range(10):
+            for i in range(50):
+                for j in range(50):
                     x = 10 + j * 0.4 * self.grid_size
                     y = 5 + i * 0.4 * self.grid_size
                     p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
@@ -65,11 +65,11 @@ class Simulation:
         # add softbody
         if True:
             solver = self.solvers[2]
-            p = Particle(mem.getNextId(), [55,50], mass=1., phase=RIGID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [40,40], mass=1., phase=RIGID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [45,30], mass=1., phase=RIGID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [60,40], mass=1., phase=RIGID); mem.add(p); solver.add(p)
-            solver.updateCM(0)
+            p = Particle(mem.getNextId(), [330,600], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [240,500], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [270,400], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [360,500], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
+            solver.init()
 
 
     def emit_smoke(self):

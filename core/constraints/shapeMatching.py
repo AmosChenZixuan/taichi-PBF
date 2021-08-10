@@ -1,3 +1,4 @@
+from typing import NewType
 import taichi as ti
 import numpy as np
 from numpy.linalg import inv
@@ -11,24 +12,35 @@ class shapeMatching:
         self.mem = memory
         self.ptr   = new_field(memory.capacity, 1, INDEX_TYPE) # global index
         self._size = new_field((), 1, COUNTER_TYPE)            # number of particles bounbed by this constraint 
-
+        # cache
         self.CM  = new_field(())
         self.CM0 = new_field(())
-        # self.Q   = new_field(self.size())
-        # self.Q0  = new_field(self.size())
-        # self.Apq = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
-        # self.R   = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
-
+        self.Apq = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
+        self.R   = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
         # constant
-        self.alpha = 1/50
+        self.alpha = 1/1200
+
+    def init(self):
+        if self._size[None] > 0:
+            self.updateCM()
+            self.update_Q()
+            self.init_helper()
+    
+    @ti.kernel
+    def init_helper(self):
+        self.CM0[None] = self.CM[None]
+        for i in range(self.size()):
+            x = self.ptr[i]
+            self.mem.Q0[x] = self.mem.Q[x]
     
     def solve(self):
-        self.updateCM(1)
-        self.calc_delta()
-        self.project()
+        if self._size[None] > 0:
+            self.updateCM()
+            self.update_cache()
+            self.update_delta()
 
     @ti.kernel
-    def updateCM(self, flag:ti.i32):
+    def updateCM(self):
         mem = self.mem
         cm  = ti.Vector([0., 0.])
         m   = 0.
@@ -38,18 +50,42 @@ class shapeMatching:
             cm += mem.newPos[x] * mem.mass[x]
             m  += mem.mass[x]
         cm /= m
-        if flag:
-            self.CM  = cm
-        else:
-            self.CM0 = cm
+        self.CM = cm
     
-    @ti.kernel
-    def calc_delta(self):
-        pass
+    
+    def update_cache(self):
+        self.update_Q()
+        self.calc_Apq()
+        self.calc_R()
 
     @ti.kernel
-    def project(self):
-        pass
+    def update_Q(self):
+        mem = self.mem
+        for i in range(self.size()):
+            x = self.ptr[i]
+            mem.Q[x] = mem.newPos[x] - self.CM[None]
+
+    @ti.kernel
+    def calc_Apq(self):
+        mem = self.mem
+        _sum = ti.Vector([[0.,0.],[0.,0.]])
+        for i in range(self.size()):
+            x     = self.ptr[i]
+            _sum += mem.Q[x] @ mem.Q0[x].transpose()
+        self.Apq[None] = _sum  
+
+    def calc_R(self):
+        A = self.Apq[None].value.to_numpy()
+        S = sqrtm(A.T@A)
+        self.R[None] = ti.Vector(A @ inv(S))
+
+    @ti.kernel
+    def update_delta(self):
+        mem = self.mem
+        for i in range(self.size()):
+            x = self.ptr[i]
+            p = self.R[None] @ mem.Q0[x] + self.CM[None]
+            mem.newPos[x] += (p - mem.newPos[x]) * self.alpha
 
     def add(self, particle:Particle):
         idx = self._size[None]
