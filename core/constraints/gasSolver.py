@@ -25,7 +25,7 @@ class gasSolver(fluidSolver):
     ##
 
     def external_forces(self):
-        self.update_cache()
+        #self.update_cache()
         self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
         self.calcNormals()           # prepare for calculating curvature

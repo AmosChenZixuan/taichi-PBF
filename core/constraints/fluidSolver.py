@@ -27,7 +27,7 @@ class fluidSolver:
         self.vort_eps    = 200
         self.visc_c      = 0.01
         # Surface Tension
-        self.gamma       = 2e6
+        self.gamma       = 0
         self.cohes_const = 32 / np.pi / self.kernel_size**9
         self.curv_scale  = 0.0001
         
@@ -78,7 +78,10 @@ class fluidSolver:
                 grad = mem.spkyBuf[x1,j] / self.restDensity / mem.mass[x1]
                 sum_Ci             += grad
                 sum_grad_pk_Ci_sqr += grad.norm_sqr()
-                rho_i              += mem.polyBuf[x1,j]
+                if mem.phase[grid.neighbors[x1,j]] == SOLID:
+                    rho_i              += 0.1 * mem.polyBuf[x1,j]
+                else:
+                    rho_i              += mem.polyBuf[x1,j]
             C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
             sum_grad_pk_Ci_sqr += sum_Ci.norm_sqr()
             mem.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)
@@ -121,7 +124,7 @@ class fluidSolver:
     ##
 
     def external_forces(self):
-        self.update_cache()
+        #self.update_cache()
         self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
         self.calcNormals()           # prepare for calculating curvature

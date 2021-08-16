@@ -1,13 +1,11 @@
-from typing import NewType
 import taichi as ti
-import numpy as np
 from numpy.linalg import inv
 from scipy.linalg import sqrtm
 from core.memory import DevMemory
 from include import *
 
 @ti.data_oriented
-class shapeMatching:
+class shapeMatchingSolver:
     def __init__(self, memory: DevMemory, alpha):
         self.mem = memory
         self.ptr   = new_field(memory.capacity, 1, INDEX_TYPE) # global index
@@ -48,7 +46,7 @@ class shapeMatching:
             cm += mem.newPos[x] * mem.mass[x]
             m  += mem.mass[x]
         cm /= m
-        self.CM = cm
+        self.CM[None] = cm
     
     
     def update_cache(self):
