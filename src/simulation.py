@@ -9,6 +9,7 @@ class Simulation:
     def __init__(self):
         # control
         self._ticks = 0
+        self._cycle = 0
         self.paused  = False
         # sim
         self.substeps           = 2
@@ -26,10 +27,7 @@ class Simulation:
         self.grid_size = 25
         self.grid = SpatialHasher()
         # constraints
-        self.solvers = [fluidSolver(self.mem, self.grid, self.grid_size),
-                        gasSolver(self.mem, self.grid, self.grid_size),
-                        shapeMatching(self.mem)
-                    ]
+        self.solvers = newConstraintGroups()
 
     def tick(self, amount=0):
         self._ticks += amount
@@ -49,12 +47,19 @@ class Simulation:
         # reinitialize
         self._ticks = 0
         mem = self.mem
-        mem.clear()
-        for s in self.solvers:
-            s.clear()
+        if self._cycle:    # initialized before, reset solvers
+            mem.clear()
+            for group in self.solvers:
+                for s in group:
+                    s.clear()
+        else:
+            self.solvers[STANDARD].append(fluidSolver(self.mem, self.grid, self.grid_size))
+            self.solvers[STANDARD].append(gasSolver(self.mem, self.grid, self.grid_size))
+            self.solvers[SHAPE].append(shapeMatching(self.mem, 1/100)) 
+
         # add water
         if False:
-            solver = self.solvers[FLUID]
+            solver = self.solvers[STANDARD][FLUID]
             for i in range(50):
                 for j in range(50):
                     x = 10 + j * 0.4 * self.grid_size
@@ -64,20 +69,21 @@ class Simulation:
                     solver.add(p)
         # add softbody
         if True:
-            solver = self.solvers[2]
+            solver = self.solvers[SHAPE][0]
             p = Particle(mem.getNextId(), [330,600], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
             p = Particle(mem.getNextId(), [240,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
             p = Particle(mem.getNextId(), [270,400], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
             p = Particle(mem.getNextId(), [360,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
             solver.init()
-
+        # Update SIM cycle
+        self._cycle += 1
 
     def emit_smoke(self):
         gas_row, gas_col = 3, 3
         smk_row, smk_col = 6, 3
         life = 1500
         # gas
-        solver = self.solvers[GAS]
+        solver = self.solvers[STANDARD][GAS]
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 10
@@ -123,8 +129,11 @@ class Simulation:
             mem.newPos[i] = mem.curPos[i] + self.dt * mem.velocity[i]
 
     def project(self, substep, iter):
-        for solver in self.solvers:
-            if not isinstance(solver, shapeMatching) or (substep == self.substeps-1 and iter == self.solver_iters-1):
+        for i, group in enumerate(self.solvers):
+            # shapematching only project once at the last iteration
+            if i == SHAPE and (substep < self.substeps-1 or iter < self.solver_iters-1):
+                continue
+            for solver in group:
                 solver.solve()
 
     @ti.kernel
@@ -167,7 +176,7 @@ class Simulation:
             for i in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, i]
                 r  = mem.curPos[x1] - mem.curPos[x2]
-                w  = self.solvers[GAS].wPoly6(r.norm_sqr())
+                w  = self.solvers[STANDARD][GAS].wPoly6(r.norm_sqr())
                 vsum += w * mem.velocity[x2]
                 wsum += w
             if wsum > 0:
@@ -178,8 +187,8 @@ class Simulation:
                 mem.lifetime[x1] = 0
 
     def external_forces(self):
-        fs = self.solvers[FLUID]
-        gs = self.solvers[GAS]
+        fs = self.solvers[STANDARD][FLUID]
+        gs = self.solvers[STANDARD][GAS]
         fs.external_forces()
         gs.external_forces()
 

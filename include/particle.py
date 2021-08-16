@@ -44,3 +44,21 @@ class Particle:
         #     self.inv_m   = 1/mass
         # else:
         #     self.movable = False     
+
+
+'''
+Constraint Groups
+
+STABILIZATION: Push particles out of invalid state and fix their velocity
+STANDARD     : Appiled to a fixed number of particles.                  e.g. Fluid/Gas, Distance
+CONTACT      : Appiled to some particles, cleared after each iteration. e.g. Collision
+SHAPE        : Appiled to vertices of a solid mesh. Different substep   e.g. Shape Matching
+'''
+
+STABILIZATION = 0
+STANDARD      = 1
+CONTACT       = 2
+SHAPE         = 3
+
+def newConstraintGroups():
+    return [[] for _ in range(4)]

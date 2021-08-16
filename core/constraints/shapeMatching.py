@@ -8,7 +8,7 @@ from include import *
 
 @ti.data_oriented
 class shapeMatching:
-    def __init__(self, memory: DevMemory):
+    def __init__(self, memory: DevMemory, alpha):
         self.mem = memory
         self.ptr   = new_field(memory.capacity, 1, INDEX_TYPE) # global index
         self._size = new_field((), 1, COUNTER_TYPE)            # number of particles bounbed by this constraint 
@@ -17,7 +17,7 @@ class shapeMatching:
         self.Apq = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
         self.R   = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
         # constant
-        self.alpha = 1/100
+        self.alpha = alpha
 
     def init(self):
         if self._size[None] > 0:
