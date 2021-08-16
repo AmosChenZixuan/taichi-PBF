@@ -49,7 +49,7 @@ class RegularContactSolver:
     @ti.pyfunc
     def clear(self):
         self._size[None] = 0
-        for i in self.counts:
+        for i in range(self.mem.capacity):
             self.counts[i] = 0
 
     @ti.func
