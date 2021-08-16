@@ -81,9 +81,9 @@ class Simulation:
                 for j in range(5):
                     x = 300 + j * 0.25 * self.grid_size
                     y = 500 + i * 0.25 * self.grid_size
-                    p = Particle(mem.getNextId(), [x,y], mass=.02, phase=SOLID)
+                    p = Particle(mem.getNextId(), [x,y], mass=.5, phase=SOLID)
                     mem.add(p)
-                    solver.add(p)
+                    solver.add(p); self.solvers[STANDARD][FLUID].add(p)
             solver.init()
         # Update SIM cycle
         self._cycle += 1
@@ -145,7 +145,6 @@ class Simulation:
         grid = self.grid
         solver = self.solvers[CONTACT][0]
         solver.clear()
-        print('====', solver.size(), solver.counts[2500])
         for x1 in range(mem.size()):
             # skip dead or visual particles
             if not mem.lifetime[x1]: continue
@@ -158,12 +157,11 @@ class Simulation:
                 r  = mem.newPos[x1] - mem.newPos[x2]
                 if (mem.phase[x1] == SOLID or mem.phase[x2] == SOLID) and r.norm() < self.collision_eps:
                     solver.add(x1, x2)
-        print('====', solver.size(), solver.counts[2500])
 
     def project(self, substep, iter):
         for i, group in enumerate(self.solvers):
             # shapematching only project once at the last iteration
-            if i == SHAPE and (substep < self.substeps-1 or iter < self.solver_iters-1):
+            if i == SHAPE and (iter < self.solver_iters-1): # or substep < self.substeps-1):
                 continue
             for solver in group:
                 solver.solve()

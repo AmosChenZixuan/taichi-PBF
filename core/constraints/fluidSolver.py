@@ -79,7 +79,7 @@ class fluidSolver:
                 sum_Ci             += grad
                 sum_grad_pk_Ci_sqr += grad.norm_sqr()
                 if mem.phase[grid.neighbors[x1,j]] == SOLID:
-                    rho_i              += 0.1 * mem.polyBuf[x1,j]
+                    rho_i              += 1 * mem.polyBuf[x1,j]  # s * sum { W(rij) }
                 else:
                     rho_i              += mem.polyBuf[x1,j]
             C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
