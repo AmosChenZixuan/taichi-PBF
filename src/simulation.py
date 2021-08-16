@@ -17,7 +17,7 @@ class Simulation:
         self.dt                 = 1 / 60 / self.substeps
         self.gravity            = vec2(y=-980.)
         self.alpha              = 0.005         # gravity refactor for gas
-        self.collision_eps      = 5
+        self.collision_eps      = 4
         self.bbox               = 0,100,0,100
         # Memory
         self.mem = DevMemory()
@@ -55,11 +55,13 @@ class Simulation:
         else:
             self.solvers[STANDARD].append(fluidSolver(self.mem, self.grid, self.grid_size))
             self.solvers[STANDARD].append(gasSolver(self.mem, self.grid, self.grid_size))
-            self.solvers[SHAPE].append(shapeMatching(self.mem, 1/100)) 
+            self.solvers[SHAPE].append(shapeMatchingSolver(self.mem, 1)) 
+            self.solvers[CONTACT].append(RegularContactSolver(self.mem, self.collision_eps))
 
         # add water
-        if False:
+        if True:
             solver = self.solvers[STANDARD][FLUID]
+            mem.newMesh()
             for i in range(50):
                 for j in range(50):
                     x = 10 + j * 0.4 * self.grid_size
@@ -70,10 +72,18 @@ class Simulation:
         # add softbody
         if True:
             solver = self.solvers[SHAPE][0]
-            p = Particle(mem.getNextId(), [330,600], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [240,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [270,400], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [360,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            mem.newMesh()
+            # p = Particle(mem.getNextId(), [330,600], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            # p = Particle(mem.getNextId(), [240,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            # p = Particle(mem.getNextId(), [270,400], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            # p = Particle(mem.getNextId(), [360,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            for i in range(10):
+                for j in range(5):
+                    x = 300 + j * 0.25 * self.grid_size
+                    y = 500 + i * 0.25 * self.grid_size
+                    p = Particle(mem.getNextId(), [x,y], mass=.02, phase=SOLID)
+                    mem.add(p)
+                    solver.add(p)
             solver.init()
         # Update SIM cycle
         self._cycle += 1
@@ -84,6 +94,7 @@ class Simulation:
         life = 1500
         # gas
         solver = self.solvers[STANDARD][GAS]
+        self.mem.newMesh()
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 10
@@ -93,6 +104,7 @@ class Simulation:
                 self.mem.add(p)
                 solver.add(p)
         # smoke
+        self.mem.newMesh()
         for i in range(smk_row):
             for j in range(smk_col):
                 x = 298 + j * 2
@@ -111,9 +123,7 @@ class Simulation:
             g = self.gravity
             if mem.phase[i] == GAS:
                 g *= self.alpha
-            if DEBUG_MODE and mem.force[i].norm() > 0:
-                print(mem.force[i])
-            mem.velocity[i] += self.dt * g + mem.force[i]
+            mem.velocity[i] += self.dt * g * mem.mass[i] + mem.force[i]
             # reset acceleration
             mem.force[i] = 0,0
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
@@ -127,6 +137,28 @@ class Simulation:
             # estimate
             # x1 = x0 + v1*dt
             mem.newPos[i] = mem.curPos[i] + self.dt * mem.velocity[i]
+
+
+    @ti.kernel
+    def update_contacts(self):
+        mem  = self.mem
+        grid = self.grid
+        solver = self.solvers[CONTACT][0]
+        solver.clear()
+        print('====', solver.size(), solver.counts[2500])
+        for x1 in range(mem.size()):
+            # skip dead or visual particles
+            if not mem.lifetime[x1]: continue
+            if mem.phase[x1] == SMOKE: continue
+            for i in range(grid.n_neighbors[x1]):
+                x2 = grid.neighbors[x1, i]
+                # skip if same mesh
+                if mem.mesh[x1] == mem.mesh[x2]:
+                    continue
+                r  = mem.newPos[x1] - mem.newPos[x2]
+                if (mem.phase[x1] == SOLID or mem.phase[x2] == SOLID) and r.norm() < self.collision_eps:
+                    solver.add(x1, x2)
+        print('====', solver.size(), solver.counts[2500])
 
     def project(self, substep, iter):
         for i, group in enumerate(self.solvers):
@@ -202,6 +234,8 @@ class Simulation:
             self.box_confinement()
             # update grid info
             self.grid.step()
+            # add collision
+            self.update_contacts()
             # non-linear Jacobi Iteration
             for j in range(self.solver_iters): 
                 self.project(i, j)
