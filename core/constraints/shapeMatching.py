@@ -14,11 +14,10 @@ class shapeMatching:
         self._size = new_field((), 1, COUNTER_TYPE)            # number of particles bounbed by this constraint 
         # cache
         self.CM  = new_field(())
-        self.CM0 = new_field(())
         self.Apq = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
         self.R   = ti.Matrix.field(2, 2, dtype=ti.f32, shape=())
         # constant
-        self.alpha = 1/1200
+        self.alpha = 1/100
 
     def init(self):
         if self._size[None] > 0:
@@ -28,7 +27,6 @@ class shapeMatching:
     
     @ti.kernel
     def init_helper(self):
-        self.CM0[None] = self.CM[None]
         for i in range(self.size()):
             x = self.ptr[i]
             self.mem.Q0[x] = self.mem.Q[x]

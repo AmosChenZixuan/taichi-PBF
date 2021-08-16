@@ -65,10 +65,10 @@ class Simulation:
         # add softbody
         if True:
             solver = self.solvers[2]
-            p = Particle(mem.getNextId(), [330,600], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [240,500], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [270,400], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
-            p = Particle(mem.getNextId(), [360,500], mass=.1, phase=RIGID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [330,600], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [240,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [270,400], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
+            p = Particle(mem.getNextId(), [360,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
             solver.init()
 
 
@@ -122,9 +122,10 @@ class Simulation:
             # x1 = x0 + v1*dt
             mem.newPos[i] = mem.curPos[i] + self.dt * mem.velocity[i]
 
-    def project(self):
+    def project(self, substep, iter):
         for solver in self.solvers:
-            solver.solve()
+            if not isinstance(solver, shapeMatching) or (substep == self.substeps-1 and iter == self.solver_iters-1):
+                solver.solve()
 
     @ti.kernel
     def box_confinement(self):
@@ -185,7 +186,7 @@ class Simulation:
     def step(self):
         if self.paused:
             return
-        for _ in range(self.substeps):
+        for i in range(self.substeps):
             # time integration - semi-implicit
             x,y = self.renderer.mouse_pos
             self.apply_force(x,y, self.renderer.attract)
@@ -193,8 +194,8 @@ class Simulation:
             # update grid info
             self.grid.step()
             # non-linear Jacobi Iteration
-            for _ in range(self.solver_iters): 
-                self.project()
+            for j in range(self.solver_iters): 
+                self.project(i, j)
             # update v and pos
             self.update()
             # advect smoke

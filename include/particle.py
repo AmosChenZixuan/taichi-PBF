@@ -10,7 +10,7 @@ import numpy as np
 FLUID = 0
 GAS   = 1
 SMOKE = 2
-RIGID = 3
+SOLID = 3
 CLOTH = 4
 
 @unique
@@ -18,7 +18,7 @@ class Phase(Enum):
     fluid = FLUID
     gas   = GAS
     smoke = SMOKE
-    rigid = RIGID
+    solid = SOLID
     cloth = CLOTH
 
 # particle colors to be rendered
