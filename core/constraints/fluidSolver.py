@@ -27,10 +27,11 @@ class fluidSolver:
         self.vort_eps    = 200
         self.visc_c      = 0.01
         # Surface Tension
-        self.gamma       = 0
+        self.gamma       = 2e6
         self.cohes_const = 32 / np.pi / self.kernel_size**9
         self.curv_scale  = 0.0001
-        
+        # Solid Contact
+        self.solid_pressure = .7
         
     def solve(self):
         self.update_cache()
@@ -75,13 +76,14 @@ class fluidSolver:
             sum_Ci             = vec2()
             sum_grad_pk_Ci_sqr = 0.
             for j in range(grid.n_neighbors[x1]):
-                grad = mem.spkyBuf[x1,j] / self.restDensity / mem.mass[x1]
+                x2 = grid.neighbors[x1, j]
+                grad = mem.spkyBuf[x1,j] / self.restDensity / mem.mass[x2]
                 sum_Ci             += grad
                 sum_grad_pk_Ci_sqr += grad.norm_sqr()
-                if mem.phase[grid.neighbors[x1,j]] == SOLID:
-                    rho_i              += 1 * mem.polyBuf[x1,j]  # s * sum { W(rij) }
+                if mem.phase[x2] == SOLID:
+                    rho_i              += self.solid_pressure * mem.polyBuf[x1,j] / mem.mass[x2]
                 else:
-                    rho_i              += mem.polyBuf[x1,j]
+                    rho_i              += mem.polyBuf[x1,j] / mem.mass[x2]
             C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
             sum_grad_pk_Ci_sqr += sum_Ci.norm_sqr()
             mem.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)

@@ -62,8 +62,8 @@ class Simulation:
         if True:
             solver = self.solvers[STANDARD][FLUID]
             mem.newMesh()
-            for i in range(50):
-                for j in range(50):
+            for i in range(30):
+                for j in range(30):
                     x = 10 + j * 0.4 * self.grid_size
                     y = 5 + i * 0.4 * self.grid_size
                     p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
@@ -81,7 +81,7 @@ class Simulation:
                 for j in range(5):
                     x = 300 + j * 0.25 * self.grid_size
                     y = 500 + i * 0.25 * self.grid_size
-                    p = Particle(mem.getNextId(), [x,y], mass=.5, phase=SOLID)
+                    p = Particle(mem.getNextId(), [x,y], mass=.7, phase=SOLID)
                     mem.add(p)
                     solver.add(p); self.solvers[STANDARD][FLUID].add(p)
             solver.init()

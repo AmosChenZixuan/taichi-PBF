@@ -34,7 +34,7 @@ while gui.running:
             backend.step()
             backend.paused = True
         elif e.key == gui.SPACE:
-            backend.emit_smoke()
+            AUTO_EMIT = not AUTO_EMIT
     if AUTO_EMIT and backend.tick() > 0:
         if not (backend.tick() % 3) and not backend.paused:
             backend.emit_smoke()
