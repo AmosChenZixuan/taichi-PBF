@@ -35,6 +35,9 @@ while gui.running:
             backend.paused = True
         elif e.key == gui.SPACE:
             AUTO_EMIT = not AUTO_EMIT
+        elif e.key == 'h':
+            m = gui.get_cursor_pos()
+            backend.pick(0, m[0], m[1])
     if AUTO_EMIT and backend.tick() > 0:
         if not (backend.tick() % 3) and not backend.paused:
             backend.emit_smoke()
@@ -59,7 +62,7 @@ while gui.running:
         # render
         frontend.render()
         frontend.draw_grid(backend.grid)
-        frontend.draw_neighbors(backend.grid, 2501)
+        frontend.draw_neighbors(backend.grid, 1)
         timer = timeit(timer, 'render')
         # display
         gui.show()

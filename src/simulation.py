@@ -60,7 +60,7 @@ class Simulation:
             self.solvers[SHAPE].append(shapeMatchingSolver(self.mem, 1)) 
 
         # add water
-        if True:
+        if False:
             solver = self.solvers[STANDARD][FLUID]
             mem.newMesh()
             for i in range(30):
@@ -84,7 +84,7 @@ class Simulation:
                     y = 500 + i * 0.25 * self.grid_size
                     p = Particle(mem.getNextId(), [x,y], mass=.7, phase=SOLID)
                     mem.add(p)
-                    solver.add(p); self.solvers[STANDARD][FLUID].add(p)
+                    solver.add(p)#; self.solvers[STANDARD][FLUID].add(p)
             solver.init()
             # add second one
             solver = self.solvers[SHAPE][1]
@@ -95,7 +95,7 @@ class Simulation:
                     y = 400 + i * 0.25 * self.grid_size
                     p = Particle(mem.getNextId(), [x,y], mass=1.2, phase=SOLID)
                     mem.add(p)
-                    solver.add(p); self.solvers[STANDARD][FLUID].add(p)
+                    solver.add(p)#; self.solvers[STANDARD][FLUID].add(p)
             solver.init()
         # Update SIM cycle
         self._cycle += 1
@@ -131,6 +131,7 @@ class Simulation:
             # skip dead or visual particles
             if not mem.lifetime[i]: continue
             if mem.phase[i] == SMOKE: continue
+            if mem.mass[i] == 0.: continue
             # v1 = v0 + f*dt 
             g = self.gravity
             if mem.phase[i] == GAS:
@@ -202,6 +203,7 @@ class Simulation:
             if not mem.lifetime[i]: continue
             mem.lifetime[i] -= 1
             if mem.phase[i] == SMOKE: continue
+            if mem.mass[i] == 0.: continue
             mem.velocity[i] = (mem.newPos[i] - mem.curPos[i]) / self.dt * 0.99
             mem.curPos[i]   = mem.newPos[i]
 
@@ -255,3 +257,8 @@ class Simulation:
             self.advect_smoke()
             # additional forces
             self.external_forces()
+
+    @ti.kernel
+    def pick(self, idx:ti.i32, mouse_x: ti.f32, mouse_y: ti.f32):
+        x1  = vec2(mouse_x*600, mouse_y*1000)
+        self.mem.curPos[idx] = x1

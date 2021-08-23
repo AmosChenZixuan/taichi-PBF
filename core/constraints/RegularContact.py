@@ -44,7 +44,7 @@ class RegularContactSolver:
         self._size[None] += 1
         self.counts[x1]  += 1
         self.counts[x2]  += 1
-        print(x1, x2, self.pairs[idx], self.counts[x1], self.counts[x2])
+        #print(x1, x2, self.pairs[idx], self.counts[x1], self.counts[x2])
 
     @ti.pyfunc
     def clear(self):
