@@ -14,7 +14,7 @@ class gasSolver(fluidSolver):
         # surface tension
         self.gamma    = 2e7
         # drag
-        self.drag_k   = 0.001
+        self.drag_k   = 0.0011
         self.curv_scale  = 0.0001
         # turbulence
         self.baroclinity = 0.1

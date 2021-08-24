@@ -72,7 +72,7 @@ class Simulation:
                 x = 290 + j * 10
                 y = 10 + i * 10
                 v = vec2(0, 200 - 180 * (abs(1-j)))
-                p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=1., lifetime=life, phase=GAS)
+                p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=.9, lifetime=life, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
         # smoke
