@@ -92,5 +92,31 @@ class FluidRigidScene(Scene):
         self.add_block(0, (200,100), 10, 10, mass=.5)
         self.add_block(1, (400,100), 10, 10, mass=.9)
 
+class TestScene(Scene):
+    def initialize(self):
+        sim = self.sim
+        sim.solvers[STANDARD].append(fluidSolver(sim.mem, sim.grid, sim.grid_size))
+        sim.solvers[STANDARD].append(  gasSolver(sim.mem, sim.grid, sim.grid_size))
+        sim.solvers[SHAPE].append(shapeMatchingSolver(sim.mem, 1))
+
+    def build(self):
+        sim = self.sim
+        mem = sim.mem
+        self.add_water((10, 5), 30, 30, 0.4, 0.8, mass=1.)
+
+        mem.newMesh()
+        for i in range(30):
+            pi = mem.getNextId()
+            mass = .5 if i > 0 else 0.
+            p = Particle(pi, [300 + 5*i,200], mass=mass , phase=SOLID)
+            mem.add(p)
+
+            if i > 0:
+                sim.solvers[STANDARD].append(StrechSolver(sim.mem, pi-1, pi, 5, 1))
+        self.add_block(0, (450,200), 5, 5, mass=.8)
+        sim.solvers[STANDARD].append(StrechSolver(sim.mem, 929, 932, 5, 1))
+
+
 
 GALLARY = [FluidScene, GasScene, BodyScene, FluidRigidScene]
+DEFAULT_SCENE = TestScene

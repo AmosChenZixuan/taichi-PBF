@@ -1,7 +1,7 @@
 import taichi as ti
 from include import *
 from src import Simulation, Renderer
-from src.scene import GALLARY, GasScene
+from src.scene import GALLARY, DEFAULT_SCENE
 from time import perf_counter as clock
 ti.init(arch=ARCH)
 
@@ -13,7 +13,7 @@ def timeit(c, what):
 backend  = Simulation()
 frontend = Renderer()
 backend.register_externals(frontend)
-backend.cur_scene = GALLARY[1](backend)
+backend.cur_scene = DEFAULT_SCENE(backend)
 gui = frontend.get_gui()
 
 backend.reset()
