@@ -28,6 +28,8 @@ class Simulation:
         self.grid = SpatialHasher()
         # constraints
         self.solvers = newConstraintGroups()
+        # scene
+        self.cur_scene = None
 
     def tick(self, amount=0):
         self._ticks += amount
@@ -43,76 +45,34 @@ class Simulation:
                         h // self.grid_size + 1)
         self.grid.initialize(self.mem, self.grid_size, grid_shape)
 
-    def reset(self):
-        # reinitialize
-        self._ticks = 0
-        mem = self.mem
-        if self._cycle:    # initialized before, reset solvers
-            mem.clear()
-            for group in self.solvers:
-                for s in group:
-                    s.clear()
-        else:
-            self.solvers[STANDARD].append(fluidSolver(self.mem, self.grid, self.grid_size))
-            self.solvers[STANDARD].append(gasSolver(self.mem, self.grid, self.grid_size))
-            self.solvers[CONTACT].append(RegularContactSolver(self.mem, self.collision_eps))
-            self.solvers[SHAPE].append(shapeMatchingSolver(self.mem, 1/5)) 
-            self.solvers[SHAPE].append(shapeMatchingSolver(self.mem, 1)) 
+    def set_scene(self, scene):
+        self.cur_scene = scene
+        self._cycle = 0
+        self.solvers = newConstraintGroups()
 
-        # add water
-        if True:
-            solver = self.solvers[STANDARD][FLUID]
-            mem.newMesh()
-            for i in range(30):
-                for j in range(30):
-                    x = 10 + j * 0.4 * self.grid_size
-                    y = 5 + i * 0.4 * self.grid_size
-                    p = Particle(mem.getNextId(), [x,y], mass=1., phase=FLUID)
-                    mem.add(p)
-                    solver.add(p)
-        # add softbody
-        if True:
-            solver = self.solvers[SHAPE][0]
-            mem.newMesh()
-            # p = Particle(mem.getNextId(), [330,600], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
-            # p = Particle(mem.getNextId(), [240,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
-            # p = Particle(mem.getNextId(), [270,400], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
-            # p = Particle(mem.getNextId(), [360,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
-            for i in range(10):
-                for j in range(10):
-                    x = 300 + j * 0.25 * self.grid_size
-                    y = 500 + i * 0.25 * self.grid_size
-                    p = Particle(mem.getNextId(), [x,y], mass=.5, phase=SOLID)
-                    mem.add(p)
-                    solver.add(p); self.solvers[STANDARD][FLUID].add(p)
-            solver.init()
-            # add second one
-            solver = self.solvers[SHAPE][1]
-            mem.newMesh()
-            for i in range(10):
-                for j in range(10):
-                    x = 500 + j * 0.25 * self.grid_size
-                    y = 400 + i * 0.25 * self.grid_size
-                    p = Particle(mem.getNextId(), [x,y], mass=1.5, phase=SOLID)
-                    mem.add(p)
-                    solver.add(p); self.solvers[STANDARD][FLUID].add(p)
-            solver.init()
-        # Update SIM cycle
-        self._cycle += 1
+    def reset(self):
+        self.mem.clear()
+        if self.cur_scene:
+            self.cur_scene.load()
+            self._ticks = 0
+            self._cycle += 1
 
     def emit_smoke(self):
         gas_row, gas_col = 3, 3
         smk_row, smk_col = 6, 3
         life = 1500
         # gas
-        solver = self.solvers[STANDARD][GAS]
+        try:
+            solver = self.solvers[STANDARD][GAS]
+        except:
+            return
         self.mem.newMesh()
         for i in range(gas_row):
             for j in range(gas_col):
                 x = 290 + j * 10
                 y = 10 + i * 10
                 v = vec2(0, 200 - 180 * (abs(1-j)))
-                p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=0.9, lifetime=life, phase=GAS)
+                p = Particle(self.mem.getNextId(), [x,y], vel = v, mass=1., lifetime=life, phase=GAS)
                 self.mem.add(p)
                 solver.add(p)
         # smoke
@@ -136,7 +96,7 @@ class Simulation:
             g = self.gravity
             if mem.phase[i] == GAS:
                 g *= self.alpha
-            mem.velocity[i] += self.dt * g * mem.mass[i] + mem.force[i]
+            mem.velocity[i] += self.dt * g + mem.force[i]
             # reset acceleration
             mem.force[i] = 0,0
             # mouse interaction - F = GMm/|r|^2 * (r/|r|)
@@ -231,8 +191,11 @@ class Simulation:
                 mem.lifetime[x1] = 0
 
     def external_forces(self):
-        fs = self.solvers[STANDARD][FLUID]
-        gs = self.solvers[STANDARD][GAS]
+        try:
+            fs = self.solvers[STANDARD][FLUID]
+            gs = self.solvers[STANDARD][GAS]
+        except:
+            return
         fs.external_forces()
         gs.external_forces()
 
@@ -247,7 +210,8 @@ class Simulation:
             # update grid info
             self.grid.step()
             # add collision
-            self.update_contacts()
+            if len(self.solvers[CONTACT]) > 0:
+                self.update_contacts()
             # non-linear Jacobi Iteration
             for j in range(self.solver_iters): 
                 self.project(i, j)

@@ -1,6 +1,7 @@
 import taichi as ti
 from include import *
 from src import Simulation, Renderer
+from src.scene import GALLARY, GasScene
 from time import perf_counter as clock
 ti.init(arch=ARCH)
 
@@ -12,6 +13,7 @@ def timeit(c, what):
 backend  = Simulation()
 frontend = Renderer()
 backend.register_externals(frontend)
+backend.cur_scene = GALLARY[1](backend)
 gui = frontend.get_gui()
 
 backend.reset()
@@ -21,6 +23,10 @@ while gui.running:
     for e in gui.get_events(ti.GUI.PRESS):
         if e.key in [ti.GUI.ESCAPE, ti.GUI.EXIT]:
             exit()
+        elif e.key >= '1' and e.key <= '9':
+            new_scene = GALLARY[(int(e.key)-1) % len(GALLARY)](backend)
+            backend.set_scene(new_scene)
+            backend.reset()
         elif e.key == 'p':
             backend.paused = not backend.paused
         elif e.key == 'r':

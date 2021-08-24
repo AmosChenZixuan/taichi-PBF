@@ -15,6 +15,7 @@ class gasSolver(fluidSolver):
         self.gamma    = 2e7
         # drag
         self.drag_k   = 0.001
+        self.curv_scale  = 0.0001
         # turbulence
         self.baroclinity = 0.1
 
@@ -66,6 +67,6 @@ class gasSolver(fluidSolver):
                 x2 = grid.neighbors[x1, i]
                 r      = mem.curPos[x1] - mem.curPos[x2]
                 fvort += omega.cross(r) * mem.polyBuf[x1,i]
-            mem.force[x1] += fvort
+            mem.force[x1] += fvort * self.baroclinity
 
         
