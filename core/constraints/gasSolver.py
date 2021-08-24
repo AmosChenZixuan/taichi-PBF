@@ -1,5 +1,4 @@
 import taichi as ti
-import numpy as np
 from core.memory import DevMemory
 from core.spatialHasing import SpatialHasher
 from core.constraints.fluidSolver import fluidSolver

@@ -56,11 +56,11 @@ class Simulation:
             self.solvers[STANDARD].append(fluidSolver(self.mem, self.grid, self.grid_size))
             self.solvers[STANDARD].append(gasSolver(self.mem, self.grid, self.grid_size))
             self.solvers[CONTACT].append(RegularContactSolver(self.mem, self.collision_eps))
-            self.solvers[SHAPE].append(shapeMatchingSolver(self.mem, 1)) 
+            self.solvers[SHAPE].append(shapeMatchingSolver(self.mem, 1/5)) 
             self.solvers[SHAPE].append(shapeMatchingSolver(self.mem, 1)) 
 
         # add water
-        if False:
+        if True:
             solver = self.solvers[STANDARD][FLUID]
             mem.newMesh()
             for i in range(30):
@@ -79,23 +79,23 @@ class Simulation:
             # p = Particle(mem.getNextId(), [270,400], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
             # p = Particle(mem.getNextId(), [360,500], mass=.1, phase=SOLID); mem.add(p); solver.add(p)
             for i in range(10):
-                for j in range(5):
+                for j in range(10):
                     x = 300 + j * 0.25 * self.grid_size
                     y = 500 + i * 0.25 * self.grid_size
-                    p = Particle(mem.getNextId(), [x,y], mass=.7, phase=SOLID)
+                    p = Particle(mem.getNextId(), [x,y], mass=.5, phase=SOLID)
                     mem.add(p)
-                    solver.add(p)#; self.solvers[STANDARD][FLUID].add(p)
+                    solver.add(p); self.solvers[STANDARD][FLUID].add(p)
             solver.init()
             # add second one
             solver = self.solvers[SHAPE][1]
             mem.newMesh()
             for i in range(10):
-                for j in range(5):
+                for j in range(10):
                     x = 500 + j * 0.25 * self.grid_size
                     y = 400 + i * 0.25 * self.grid_size
-                    p = Particle(mem.getNextId(), [x,y], mass=1.2, phase=SOLID)
+                    p = Particle(mem.getNextId(), [x,y], mass=1.5, phase=SOLID)
                     mem.add(p)
-                    solver.add(p)#; self.solvers[STANDARD][FLUID].add(p)
+                    solver.add(p); self.solvers[STANDARD][FLUID].add(p)
             solver.init()
         # Update SIM cycle
         self._cycle += 1
