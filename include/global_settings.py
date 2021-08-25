@@ -6,8 +6,9 @@ ARCH = ti.gpu
 # if turn on, sanity checks will be performed during simulation
 DEBUG_MODE = False
 DRAW_GRID = True
-DRAW_NEIGHBOR = False
+DRAW_NEIGHBOR = True
 DRAW_VEL_FIELD = False
+PICKED_PARTICLE = 900
 
 # control
 AUTO_EMIT = False

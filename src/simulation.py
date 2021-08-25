@@ -226,3 +226,4 @@ class Simulation:
     def pick(self, idx:ti.i32, mouse_x: ti.f32, mouse_y: ti.f32):
         x1  = vec2(mouse_x*600, mouse_y*1000)
         self.mem.curPos[idx] = x1
+        self.mem.newPos[idx] = x1
