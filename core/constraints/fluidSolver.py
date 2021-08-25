@@ -30,7 +30,8 @@ class fluidSolver:
         self.gamma       = 2e6
         self.cohes_const = 32 / np.pi / self.kernel_size**9
         self.curv_scale  = 0.0001
-        
+        # Solid Contact
+        self.solid_pressure = .7
         
     def solve(self):
         self.update_cache()
@@ -71,15 +72,20 @@ class fluidSolver:
             x1 = self.ptr[i]
             if not mem.lifetime[x1]: continue
             # accumulators
+            rho0               = self.restDensity * mem.mass[x1]
             rho_i              = self.wPoly6(0.)
             sum_Ci             = vec2()
             sum_grad_pk_Ci_sqr = 0.
             for j in range(grid.n_neighbors[x1]):
-                grad = mem.spkyBuf[x1,j] / self.restDensity / mem.mass[x1]
+                x2 = grid.neighbors[x1, j]
+                grad = mem.spkyBuf[x1,j] #/ (self.restDensity * mem.mass[x2])
                 sum_Ci             += grad
                 sum_grad_pk_Ci_sqr += grad.norm_sqr()
-                rho_i              += mem.polyBuf[x1,j]
-            C_i = (mem.mass[x1] * rho_i / self.restDensity) - 1
+                if mem.phase[x2] == SOLID:
+                    rho_i              += self.solid_pressure * mem.polyBuf[x1,j] * mem.mass[x2]
+                else:
+                    rho_i              += mem.polyBuf[x1,j] * mem.mass[x2]
+            C_i = (rho_i / rho0) - 1
             sum_grad_pk_Ci_sqr += sum_Ci.norm_sqr()
             mem.lambdas[x1] = -C_i / (sum_grad_pk_Ci_sqr + self.relaxation)
             # cache for later computation
@@ -121,7 +127,7 @@ class fluidSolver:
     ##
 
     def external_forces(self):
-        self.update_cache()
+        #self.update_cache()
         self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
         self.calcNormals()           # prepare for calculating curvature
@@ -137,6 +143,7 @@ class fluidSolver:
         for xi in range(self.size()):
             x1 = self.ptr[xi]
             if not mem.lifetime[x1]: continue
+            if mem.phase[x1] > GAS : continue
             # angular velocity
             omega = vec2()
             for i in range(grid.n_neighbors[x1]):
@@ -165,6 +172,7 @@ class fluidSolver:
         for xi in range(self.size()):
             x1 = self.ptr[xi]
             if not mem.lifetime[x1]: continue
+            if mem.phase[x1] > GAS : continue
             visc = vec2()
             for i in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, i]
@@ -180,6 +188,7 @@ class fluidSolver:
         for i in range(self.size()):
             x1 = self.ptr[i]
             if not mem.lifetime[x1]: continue
+            if mem.phase[x1] > GAS : continue
             norm = vec2()
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]
@@ -200,6 +209,7 @@ class fluidSolver:
         for i in range(self.size()):
             x1 = self.ptr[i]
             if not mem.lifetime[x1]: continue
+            if mem.phase[x1] > GAS : continue
             force = vec2()
             for j in range(grid.n_neighbors[x1]):
                 x2 = grid.neighbors[x1, j]

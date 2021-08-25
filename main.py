@@ -1,6 +1,7 @@
 import taichi as ti
 from include import *
 from src import Simulation, Renderer
+from src.scene import GALLARY, DEFAULT_SCENE
 from time import perf_counter as clock
 ti.init(arch=ARCH)
 
@@ -12,6 +13,7 @@ def timeit(c, what):
 backend  = Simulation()
 frontend = Renderer()
 backend.register_externals(frontend)
+backend.cur_scene = DEFAULT_SCENE(backend)
 gui = frontend.get_gui()
 
 backend.reset()
@@ -21,6 +23,10 @@ while gui.running:
     for e in gui.get_events(ti.GUI.PRESS):
         if e.key in [ti.GUI.ESCAPE, ti.GUI.EXIT]:
             exit()
+        elif e.key >= '1' and e.key <= '9':
+            new_scene = GALLARY[(int(e.key)-1) % len(GALLARY)](backend)
+            backend.set_scene(new_scene)
+            backend.reset()
         elif e.key == 'p':
             backend.paused = not backend.paused
         elif e.key == 'r':
@@ -34,7 +40,10 @@ while gui.running:
             backend.step()
             backend.paused = True
         elif e.key == gui.SPACE:
-            backend.emit_smoke()
+            AUTO_EMIT = not AUTO_EMIT
+        elif e.key == 'h':
+            m = gui.get_cursor_pos()
+            backend.pick(PICKED_PARTICLE, m[0], m[1])
     if AUTO_EMIT and backend.tick() > 0:
         if not (backend.tick() % 3) and not backend.paused:
             backend.emit_smoke()
@@ -59,7 +68,7 @@ while gui.running:
         # render
         frontend.render()
         frontend.draw_grid(backend.grid)
-        frontend.draw_neighbors(backend.grid, 10)
+        frontend.draw_neighbors(backend.grid, PICKED_PARTICLE)
         timer = timeit(timer, 'render')
         # display
         gui.show()

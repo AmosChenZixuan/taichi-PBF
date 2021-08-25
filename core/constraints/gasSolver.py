@@ -1,5 +1,4 @@
 import taichi as ti
-import numpy as np
 from core.memory import DevMemory
 from core.spatialHasing import SpatialHasher
 from core.constraints.fluidSolver import fluidSolver
@@ -15,7 +14,8 @@ class gasSolver(fluidSolver):
         # surface tension
         self.gamma    = 2e7
         # drag
-        self.drag_k   = 0.001
+        self.drag_k   = 0.0011
+        self.curv_scale  = 0.0001
         # turbulence
         self.baroclinity = 0.1
 
@@ -25,7 +25,7 @@ class gasSolver(fluidSolver):
     ##
 
     def external_forces(self):
-        self.update_cache()
+        #self.update_cache()
         self.vorticity_confinement() # artificial curl force
         self.xsphViscosity()         # artificial damping
         self.calcNormals()           # prepare for calculating curvature
@@ -67,6 +67,6 @@ class gasSolver(fluidSolver):
                 x2 = grid.neighbors[x1, i]
                 r      = mem.curPos[x1] - mem.curPos[x2]
                 fvort += omega.cross(r) * mem.polyBuf[x1,i]
-            mem.force[x1] += fvort
+            mem.force[x1] += fvort * self.baroclinity
 
         
