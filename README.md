@@ -4,7 +4,7 @@
 # Requirements
 `
 python>=3.8
-taichi==0.7.31
+taichi==0.8.1
 scipy==1.10.1
 `
 
