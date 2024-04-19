@@ -10,15 +10,13 @@ scipy==1.10.1
 
 # Features
 1. Fluid Sim (water pool)
-2. Smoke/Gas Sim (smoke plume rising in open area)
+2. Smoke/Gas Sim (smoke plume rising in open area)\
 ![smoke](imgs/smoke.png)
-
-3. Pendulum (Rope + Rigid Body)
+5. Pendulum (Rope + Rigid Body)\
 ![pendulum](imgs/pendulum.png)
-
-4. Rope
-5. Rigid Body
-6. Fluid + Rigid Coupling
+6. Rope
+7. Rigid Body
+8. Fluid + Rigid Coupling\
 ![fluid+rigid](imgs/fluid+rigid.png)
 
 # Control
